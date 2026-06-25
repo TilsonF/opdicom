@@ -1,4 +1,5 @@
 import {
+  DEFAULT_FPS,
   MANIPULATION_TOOLS,
   MEASUREMENT_TOOLS,
   OpDicomEngine,
@@ -98,6 +99,22 @@ export class OpdicomViewer extends LitElement {
       color: var(--opdicom-muted, #9aa4b2);
       padding: 0 6px;
     }
+    .fps {
+      width: 48px;
+      background: var(--opdicom-control-bg, #232830);
+      color: inherit;
+      border: 1px solid var(--opdicom-border, #2a2f37);
+      border-radius: 6px;
+      padding: 5px 6px;
+      font-size: 13px;
+    }
+    .fps-label {
+      font-size: 12px;
+      color: var(--opdicom-muted, #9aa4b2);
+    }
+    [hidden] {
+      display: none !important;
+    }
     .stage {
       position: relative;
       flex: 1;
@@ -141,6 +158,8 @@ export class OpdicomViewer extends LitElement {
   @state() private dragover = false;
   @state() private sliceIndex = 0;
   @state() private sliceCount = 0;
+  @state() private isPlaying = false;
+  @state() private fps = DEFAULT_FPS;
   @state() private status = "Drop a DICOM file here, or use loadFiles().";
 
   @query(".viewport") private viewportEl!: HTMLDivElement;
@@ -196,6 +215,7 @@ export class OpdicomViewer extends LitElement {
       const result = await this.engine!.loadFiles(files);
       this.metadata = result.metadata;
       this.hasImage = result.imageIds.length > 0;
+      this.isPlaying = false;
       this.applyFirstPreset();
       this.dispatchEvent(
         new CustomEvent("opdicom-load", { detail: result, bubbles: true, composed: true }),
@@ -238,6 +258,19 @@ export class OpdicomViewer extends LitElement {
 
   previousSlice(): void {
     this.engine?.scrollStack(-1);
+  }
+
+  /** Toggle cine playback at the current fps. */
+  togglePlay(): void {
+    this.isPlaying = this.engine?.togglePlay({ fps: this.fps }) ?? false;
+  }
+
+  /** Set the cine frame rate; restarts playback if currently playing. */
+  setFps(fps: number): void {
+    this.fps = fps;
+    if (this.isPlaying) {
+      this.engine?.play({ fps });
+    }
   }
 
   reset(): void {
@@ -338,6 +371,28 @@ export class OpdicomViewer extends LitElement {
         <button type="button" @click=${() => this.reset()} title="Reset view">
           Reset
         </button>
+        <div class="divider" ?hidden=${this.sliceCount <= 1}></div>
+        <div class="group" ?hidden=${this.sliceCount <= 1}>
+          <button
+            type="button"
+            aria-pressed=${this.isPlaying}
+            @click=${() => this.togglePlay()}
+            title=${this.isPlaying ? "Pause cine" : "Play cine"}
+          >
+            ${this.isPlaying ? "⏸" : "▶"}
+          </button>
+          <input
+            class="fps"
+            type="number"
+            min="1"
+            max="60"
+            .value=${String(this.fps)}
+            @change=${(e: Event) =>
+              this.setFps(Number((e.target as HTMLInputElement).value))}
+            title="Frames per second"
+          />
+          <span class="fps-label">fps</span>
+        </div>
         <span class="spacer"></span>
         <span class="slice" ?hidden=${this.sliceCount <= 1}>
           ${this.sliceIndex + 1} / ${this.sliceCount}

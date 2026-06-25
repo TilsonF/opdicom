@@ -9,8 +9,13 @@ import {
   Enums as ToolEnums,
   ToolGroupManager,
   annotation,
+  utilities as toolsUtilities,
 } from "@cornerstonejs/tools";
 import { OpDicomParser, type DicomMetadata } from "@opdicom/parser";
+import {
+  normalizeCineOptions,
+  type CineOptions,
+} from "./cine.js";
 import { ensureInitialized } from "./init.js";
 import {
   TOOLS,
@@ -53,6 +58,7 @@ export class OpDicomEngine {
 
   private renderingEngine?: RenderingEngine;
   private destroyed = false;
+  private playing = false;
   private readonly handleStackNewImage = (evt: Event): void => {
     const detail = (evt as CustomEvent).detail as
       | { viewportId?: string; imageIdIndex?: number }
@@ -169,6 +175,7 @@ export class OpDicomEngine {
   async loadImageIds(imageIds: string[], startIndex = 0): Promise<void> {
     const viewport = this.getViewport();
     if (!viewport) throw new Error("OpDICOM: engine not initialized");
+    if (this.playing) this.pause();
     await viewport.setStack(imageIds, startIndex);
     viewport.render();
     this.onImageChange?.(this.getCurrentImageIndex(), this.getImageCount());
@@ -200,6 +207,38 @@ export class OpDicomEngine {
   /** Scroll the stack by a relative number of slices (e.g. +1 / -1). */
   scrollStack(delta: number): void {
     this.getViewport()?.scroll(delta);
+  }
+
+  // ---- cine playback -------------------------------------------------------
+
+  /** Whether cine playback is currently running. */
+  get isPlaying(): boolean {
+    return this.playing;
+  }
+
+  /** Start cine (movie) playback of the current series. */
+  play(options: CineOptions = {}): void {
+    if (this.getImageCount() <= 1) return;
+    const { framesPerSecond, loop, reverse } = normalizeCineOptions(options);
+    toolsUtilities.cine.playClip(this.element, {
+      framesPerSecond,
+      loop,
+      reverse,
+    });
+    this.playing = true;
+  }
+
+  /** Stop cine playback. */
+  pause(): void {
+    toolsUtilities.cine.stopClip(this.element);
+    this.playing = false;
+  }
+
+  /** Toggle cine playback; returns the resulting playing state. */
+  togglePlay(options: CineOptions = {}): boolean {
+    if (this.playing) this.pause();
+    else this.play(options);
+    return this.playing;
   }
 
   // ---- display properties --------------------------------------------------
@@ -249,6 +288,7 @@ export class OpDicomEngine {
   /** Tear down the rendering engine, tool group and listeners. */
   destroy(): void {
     this.destroyed = true;
+    if (this.playing) this.pause();
     eventTarget.removeEventListener(
       Enums.Events.STACK_NEW_IMAGE,
       this.handleStackNewImage,
