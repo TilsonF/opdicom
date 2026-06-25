@@ -1,0 +1,35 @@
+{
+  "name": "@opdicom/viewer",
+  "version": "0.1.0",
+  "description": "<opdicom-viewer> — a modern, framework-agnostic DICOM viewer Web Component.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": ["**/*.css", "./src/index.ts", "./src/opdicom-viewer.ts"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["dist", "src"],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opdicom/core": "workspace:*",
+    "lit": "3.3.3"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  },
+  "keywords": ["dicom", "viewer", "web-component", "custom-element", "lit"]
+}

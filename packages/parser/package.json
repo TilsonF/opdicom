@@ -1,0 +1,35 @@
+{
+  "name": "@opdicom/parser",
+  "version": "0.1.0",
+  "description": "High-performance DICOM medical image parser — fast metadata & tag extraction for the browser and Node.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["dist", "src"],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dicom-parser": "1.8.21"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  },
+  "keywords": ["dicom", "parser", "medical-imaging", "dcm", "metadata"]
+}

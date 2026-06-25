@@ -1,0 +1,37 @@
+{
+  "name": "@opdicom/core",
+  "version": "0.1.0",
+  "description": "Headless, framework-agnostic DICOM viewer engine built on Cornerstone3D.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["dist", "src"],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cornerstonejs/core": "5.0.13",
+    "@cornerstonejs/dicom-image-loader": "5.0.13",
+    "@cornerstonejs/tools": "5.0.13",
+    "@opdicom/parser": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  },
+  "keywords": ["dicom", "viewer", "cornerstone3d", "medical-imaging"]
+}
