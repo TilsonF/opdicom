@@ -19,14 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        # pnpm 11 requires Node >=22.13; the published packages still target
+        # Node >=20 for consumers (who don't use our pnpm toolchain).
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node ${{ matrix.node }}
         uses: actions/setup-node@v4
@@ -63,8 +63,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22

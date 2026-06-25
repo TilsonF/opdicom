@@ -5,6 +5,15 @@ export type {
   LoadResult,
 } from "./engine.js";
 export { ensureInitialized } from "./init.js";
+export {
+  TOOLS,
+  MANIPULATION_TOOLS,
+  MEASUREMENT_TOOLS,
+  getToolDescriptor,
+  cornerstoneToolName,
+  isMeasurementTool,
+} from "./tools.js";
+export type { ToolDescriptor, ToolCategory } from "./tools.js";
 export { WINDOW_PRESETS } from "./presets.js";
 export type { WindowPresetName } from "./presets.js";
 export { voiFromWindowLevel, windowLevelFromVoi } from "./voi.js";

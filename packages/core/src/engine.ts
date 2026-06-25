@@ -1,36 +1,33 @@
 import {
   Enums,
   RenderingEngine,
+  eventTarget,
   type Types,
 } from "@cornerstonejs/core";
 import { wadouri } from "@cornerstonejs/dicom-image-loader";
 import {
   Enums as ToolEnums,
-  PanTool,
-  StackScrollTool,
   ToolGroupManager,
-  WindowLevelTool,
-  ZoomTool,
+  annotation,
 } from "@cornerstonejs/tools";
 import { OpDicomParser, type DicomMetadata } from "@opdicom/parser";
 import { ensureInitialized } from "./init.js";
+import {
+  TOOLS,
+  cornerstoneToolName,
+  type OpDicomTool,
+} from "./tools.js";
 import { voiFromWindowLevel } from "./voi.js";
 
-/** Manipulation tools OpDICOM binds to the primary mouse / touch interaction. */
-export type OpDicomTool = "windowLevel" | "pan" | "zoom" | "scroll";
-
-const TOOL_NAME: Record<OpDicomTool, string> = {
-  windowLevel: WindowLevelTool.toolName,
-  pan: PanTool.toolName,
-  zoom: ZoomTool.toolName,
-  scroll: StackScrollTool.toolName,
-};
+export type { OpDicomTool } from "./tools.js";
 
 export interface OpDicomEngineOptions {
   /** Unique id; auto-derived when omitted. Useful for multiple viewers. */
   id?: string;
   /** Background color as [r, g, b] in 0..1. Defaults to black. */
   background?: Types.Point3;
+  /** Notified whenever the displayed slice changes (scroll, keyboard, API). */
+  onImageChange?: (index: number, count: number) => void;
 }
 
 export interface LoadResult {
@@ -43,8 +40,8 @@ let instanceCounter = 0;
 /**
  * Headless, framework-agnostic DICOM viewer engine. Owns one Cornerstone3D
  * rendering engine bound to a single DOM element and a stack viewport, plus a
- * tool group wired for pan/zoom/window-level/scroll. UI layers (the Web
- * Component, React wrappers, …) drive this class; it has no framework deps.
+ * tool group wired for manipulation (pan/zoom/window-level/scroll) and
+ * measurement (length/angle/ROI/probe) tools.
  */
 export class OpDicomEngine {
   readonly id: string;
@@ -52,13 +49,22 @@ export class OpDicomEngine {
   private readonly toolGroupId: string;
   private readonly element: HTMLDivElement;
   private readonly background: Types.Point3;
+  private readonly onImageChange?: (index: number, count: number) => void;
 
   private renderingEngine?: RenderingEngine;
   private destroyed = false;
+  private readonly handleStackNewImage = (evt: Event): void => {
+    const detail = (evt as CustomEvent).detail as
+      | { viewportId?: string; imageIdIndex?: number }
+      | undefined;
+    if (!detail || detail.viewportId !== this.viewportId) return;
+    this.onImageChange?.(this.getCurrentImageIndex(), this.getImageCount());
+  };
 
   constructor(element: HTMLDivElement, options: OpDicomEngineOptions = {}) {
     this.element = element;
     this.background = options.background ?? [0, 0, 0];
+    this.onImageChange = options.onImageChange;
     const base = options.id ?? `opdicom-${++instanceCounter}`;
     this.id = base;
     this.viewportId = `${base}-viewport`;
@@ -81,6 +87,10 @@ export class OpDicomEngine {
     });
 
     this.setupTools();
+    eventTarget.addEventListener(
+      Enums.Events.STACK_NEW_IMAGE,
+      this.handleStackNewImage,
+    );
   }
 
   private setupTools(): void {
@@ -90,50 +100,49 @@ export class OpDicomEngine {
     const toolGroup = ToolGroupManager.createToolGroup(this.toolGroupId);
     if (!toolGroup) throw new Error("OpDICOM: failed to create tool group");
 
-    toolGroup.addTool(WindowLevelTool.toolName);
-    toolGroup.addTool(PanTool.toolName);
-    toolGroup.addTool(ZoomTool.toolName);
-    toolGroup.addTool(StackScrollTool.toolName);
+    for (const tool of TOOLS) {
+      toolGroup.addTool(tool.cornerstoneName);
+    }
     toolGroup.addViewport(this.viewportId, this.id);
 
-    // Default bindings: left = window/level, middle = pan, right = zoom,
-    // wheel = scroll through the stack.
-    toolGroup.setToolActive(WindowLevelTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Primary }],
-    });
-    toolGroup.setToolActive(PanTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }],
-    });
-    toolGroup.setToolActive(ZoomTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }],
-    });
-    toolGroup.setToolActive(StackScrollTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Wheel }],
-    });
+    // Default: left = window/level. Secondary bindings stay constant so the
+    // user can always pan/zoom/scroll regardless of the active primary tool.
+    this.setPrimaryTool("windowLevel");
   }
 
-  /** Change which tool the primary (left / single-touch) interaction drives. */
+  /**
+   * Bind a tool to the primary (left mouse / single-touch) interaction. Keeps
+   * zoom on right-click, pan on middle-click and stack scroll on the wheel.
+   */
   setPrimaryTool(tool: OpDicomTool): void {
     const toolGroup = ToolGroupManager.getToolGroup(this.toolGroupId);
     if (!toolGroup) return;
-    for (const name of Object.values(TOOL_NAME)) {
-      if (toolGroup.getToolInstance(name)) {
-        toolGroup.setToolPassive(name);
-      }
+
+    const primaryName = cornerstoneToolName(tool);
+    for (const t of TOOLS) {
+      if (t.cornerstoneName === primaryName) continue;
+      toolGroup.setToolPassive(t.cornerstoneName);
     }
-    toolGroup.setToolActive(TOOL_NAME[tool], {
+    toolGroup.setToolActive(primaryName, {
       bindings: [{ mouseButton: ToolEnums.MouseBindings.Primary }],
     });
-    // Keep zoom/pan/scroll on their secondary bindings.
-    toolGroup.setToolActive(ZoomTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }],
-    });
-    toolGroup.setToolActive(PanTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }],
-    });
-    toolGroup.setToolActive(StackScrollTool.toolName, {
-      bindings: [{ mouseButton: ToolEnums.MouseBindings.Wheel }],
-    });
+
+    // Constant secondary bindings (skip the one now on primary).
+    if (tool !== "zoom") {
+      toolGroup.setToolActive(cornerstoneToolName("zoom"), {
+        bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }],
+      });
+    }
+    if (tool !== "pan") {
+      toolGroup.setToolActive(cornerstoneToolName("pan"), {
+        bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }],
+      });
+    }
+    if (tool !== "scroll") {
+      toolGroup.setToolActive(cornerstoneToolName("scroll"), {
+        bindings: [{ mouseButton: ToolEnums.MouseBindings.Wheel }],
+      });
+    }
   }
 
   /**
@@ -162,7 +171,38 @@ export class OpDicomEngine {
     if (!viewport) throw new Error("OpDICOM: engine not initialized");
     await viewport.setStack(imageIds, startIndex);
     viewport.render();
+    this.onImageChange?.(this.getCurrentImageIndex(), this.getImageCount());
   }
+
+  // ---- stack navigation ----------------------------------------------------
+
+  /** Total number of images in the current stack. */
+  getImageCount(): number {
+    return this.getViewport()?.getImageIds().length ?? 0;
+  }
+
+  /** Zero-based index of the displayed image. */
+  getCurrentImageIndex(): number {
+    return this.getViewport()?.getCurrentImageIdIndex() ?? 0;
+  }
+
+  /** Jump to an absolute image index (clamped to the valid range). */
+  async setImageIndex(index: number): Promise<void> {
+    const viewport = this.getViewport();
+    if (!viewport) return;
+    const count = this.getImageCount();
+    if (count === 0) return;
+    const clamped = Math.max(0, Math.min(index, count - 1));
+    await viewport.setImageIdIndex(clamped);
+    viewport.render();
+  }
+
+  /** Scroll the stack by a relative number of slices (e.g. +1 / -1). */
+  scrollStack(delta: number): void {
+    this.getViewport()?.scroll(delta);
+  }
+
+  // ---- display properties --------------------------------------------------
 
   /** Apply a window/level (VOI) in output units (e.g. Hounsfield for CT). */
   setWindowLevel(center: number, width: number): void {
@@ -178,6 +218,12 @@ export class OpDicomEngine {
     if (!viewport) return;
     viewport.setProperties({ invert });
     viewport.render();
+  }
+
+  /** Remove every measurement/annotation and repaint. */
+  clearMeasurements(): void {
+    annotation.state.removeAllAnnotations();
+    this.getViewport()?.render();
   }
 
   /** Reset pan/zoom/VOI to the image defaults. */
@@ -200,9 +246,13 @@ export class OpDicomEngine {
     ) as Types.IStackViewport | undefined;
   }
 
-  /** Tear down the rendering engine, tool group and cached state. */
+  /** Tear down the rendering engine, tool group and listeners. */
   destroy(): void {
     this.destroyed = true;
+    eventTarget.removeEventListener(
+      Enums.Events.STACK_NEW_IMAGE,
+      this.handleStackNewImage,
+    );
     const toolGroup = ToolGroupManager.getToolGroup(this.toolGroupId);
     if (toolGroup) ToolGroupManager.destroyToolGroup(this.toolGroupId);
     this.renderingEngine?.destroy();
