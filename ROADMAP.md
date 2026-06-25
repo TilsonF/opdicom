@@ -16,14 +16,15 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Security: SECURITY.md, CodeQL, Dependabot, audit in CI, dep overrides
 - ✅ CI (typecheck/test/build, Node 20/22) + branch protection
 
-## v0.2 — Navigation & measurements 🚧
+## v0.2 — Navigation & measurements ✅
 - ✅ **Series / stack scroll** — wheel + keyboard (↑/↓/←/→, PgUp/PgDn, Home/End),
   programmatic `setImageIndex`/`scrollStack`, slice indicator (`n / total`),
   `opdicom-slice` event
 - ✅ **Measurements** — Length, Angle, Rectangle ROI, Elliptical ROI, Probe
   (ROIs surface area + pixel/HU statistics from Cornerstone)
 - ✅ Clear-measurements action (`clearMeasurements()` + toolbar button)
-- ⬜ Cine playback (play/pause, fps) for multi-frame series
+- ✅ Cine playback — play/pause + fps control for multi-image series
+  (`play`/`pause`/`togglePlay`/`isPlaying`, clamped frame rate)
 
 ## v0.3 — Export & interop
 - ⬜ Export viewport to PNG/JPEG

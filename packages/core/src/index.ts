@@ -18,6 +18,13 @@ export { WINDOW_PRESETS } from "./presets.js";
 export type { WindowPresetName } from "./presets.js";
 export { voiFromWindowLevel, windowLevelFromVoi } from "./voi.js";
 export type { VoiRange } from "./voi.js";
+export {
+  normalizeCineOptions,
+  DEFAULT_FPS,
+  MIN_FPS,
+  MAX_FPS,
+} from "./cine.js";
+export type { CineOptions, NormalizedCine } from "./cine.js";
 
 // Re-export the parser surface so consumers get metadata types from one place.
 export {
