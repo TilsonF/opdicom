@@ -5,8 +5,10 @@
   "description": "OpDICOM — modern, zero-footprint, framework-agnostic DICOM web viewer & high-performance parser",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@11.9.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=20",
+    "pnpm": ">=10"
   },
   "scripts": {
     "dev": "pnpm --filter @opdicom/demo dev",
