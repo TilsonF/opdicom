@@ -19,7 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        # pnpm 11 requires Node >=22.13; the published packages still target
+        # Node >=20 for consumers (who don't use our pnpm toolchain).
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
 
