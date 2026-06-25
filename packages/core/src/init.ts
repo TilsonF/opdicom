@@ -3,7 +3,12 @@ import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader"
 import {
   init as toolsInit,
   addTool,
+  AngleTool,
+  EllipticalROITool,
+  LengthTool,
   PanTool,
+  ProbeTool,
+  RectangleROITool,
   StackScrollTool,
   WindowLevelTool,
   ZoomTool,
@@ -23,11 +28,18 @@ export function ensureInitialized(): Promise<void> {
       dicomImageLoaderInit();
       await toolsInit();
 
-      // Register the manipulation tools OpDICOM exposes in its MVP toolbar.
+      // Manipulation tools.
       addTool(WindowLevelTool);
       addTool(PanTool);
       addTool(ZoomTool);
       addTool(StackScrollTool);
+
+      // Measurement / annotation tools.
+      addTool(LengthTool);
+      addTool(AngleTool);
+      addTool(RectangleROITool);
+      addTool(EllipticalROITool);
+      addTool(ProbeTool);
     })();
   }
   return initPromise;

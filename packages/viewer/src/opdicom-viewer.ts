@@ -1,9 +1,12 @@
 import {
+  MANIPULATION_TOOLS,
+  MEASUREMENT_TOOLS,
   OpDicomEngine,
   WINDOW_PRESETS,
   type DicomMetadata,
   type LoadResult,
   type OpDicomTool,
+  type ToolDescriptor,
 } from "@opdicom/core";
 import { LitElement, css, html, type PropertyValues } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
@@ -13,6 +16,7 @@ import { customElement, property, query, state } from "lit/decorators.js";
  *
  * @fires opdicom-load   - detail: LoadResult, after files/imageIds load
  * @fires opdicom-error  - detail: { error: unknown }
+ * @fires opdicom-slice  - detail: { index, count }, when the slice changes
  *
  * @cssprop --opdicom-bg            - viewport background (default #000)
  * @cssprop --opdicom-toolbar-bg    - toolbar background
@@ -54,6 +58,17 @@ export class OpdicomViewer extends LitElement {
     .toolbar.hidden {
       display: none;
     }
+    .group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--opdicom-border, #2a2f37);
+      margin: 2px 4px;
+    }
     button,
     select {
       background: var(--opdicom-control-bg, #232830);
@@ -77,15 +92,21 @@ export class OpdicomViewer extends LitElement {
     .spacer {
       flex: 1;
     }
+    .slice {
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: var(--opdicom-muted, #9aa4b2);
+      padding: 0 6px;
+    }
     .stage {
       position: relative;
       flex: 1;
       min-height: 0;
+      outline: none;
     }
     .viewport {
       position: absolute;
       inset: 0;
-      /* Cornerstone manages the canvas inside this element. */
     }
     .dropzone {
       position: absolute;
@@ -118,6 +139,8 @@ export class OpdicomViewer extends LitElement {
   @state() private activeTool: OpDicomTool = "windowLevel";
   @state() private hasImage = false;
   @state() private dragover = false;
+  @state() private sliceIndex = 0;
+  @state() private sliceCount = 0;
   @state() private status = "Drop a DICOM file here, or use loadFiles().";
 
   @query(".viewport") private viewportEl!: HTMLDivElement;
@@ -141,10 +164,24 @@ export class OpdicomViewer extends LitElement {
   }
 
   private async bootstrap(): Promise<void> {
+    if (this.engine) return;
     try {
-      this.engine = new OpDicomEngine(this.viewportEl);
+      this.engine = new OpDicomEngine(this.viewportEl, {
+        onImageChange: (index, count) => {
+          this.sliceIndex = index;
+          this.sliceCount = count;
+          this.dispatchEvent(
+            new CustomEvent("opdicom-slice", {
+              detail: { index, count },
+              bubbles: true,
+              composed: true,
+            }),
+          );
+        },
+      });
       await this.engine.init();
     } catch (error) {
+      this.engine = undefined;
       this.emitError(error);
     }
   }
@@ -153,7 +190,7 @@ export class OpdicomViewer extends LitElement {
 
   /** Load DICOM File/Blob objects (e.g. from an <input> or drag & drop). */
   async loadFiles(files: ArrayLike<Blob>): Promise<LoadResult | undefined> {
-    if (!this.engine) await this.bootstrap();
+    await this.bootstrap();
     try {
       this.status = "Loading…";
       const result = await this.engine!.loadFiles(files);
@@ -172,7 +209,7 @@ export class OpdicomViewer extends LitElement {
 
   /** Load Cornerstone imageIds directly (wadouri / wadors / dicomweb). */
   async loadImageIds(imageIds: string[]): Promise<void> {
-    if (!this.engine) await this.bootstrap();
+    await this.bootstrap();
     try {
       await this.engine!.loadImageIds(imageIds);
       this.hasImage = imageIds.length > 0;
@@ -189,6 +226,18 @@ export class OpdicomViewer extends LitElement {
   applyPreset(name: string): void {
     const preset = WINDOW_PRESETS[name];
     if (preset) this.engine?.setWindowLevel(preset.center, preset.width);
+  }
+
+  clearMeasurements(): void {
+    this.engine?.clearMeasurements();
+  }
+
+  nextSlice(): void {
+    this.engine?.scrollStack(1);
+  }
+
+  previousSlice(): void {
+    this.engine?.scrollStack(-1);
   }
 
   reset(): void {
@@ -229,24 +278,50 @@ export class OpdicomViewer extends LitElement {
     this.dragover = false;
   };
 
-  private toolButton(tool: OpDicomTool, label: string) {
+  private onKeyDown = (e: KeyboardEvent): void => {
+    if (!this.engine || this.sliceCount === 0) return;
+    switch (e.key) {
+      case "ArrowDown":
+      case "ArrowRight":
+      case "PageDown":
+        this.engine.scrollStack(1);
+        e.preventDefault();
+        break;
+      case "ArrowUp":
+      case "ArrowLeft":
+      case "PageUp":
+        this.engine.scrollStack(-1);
+        e.preventDefault();
+        break;
+      case "Home":
+        void this.engine.setImageIndex(0);
+        e.preventDefault();
+        break;
+      case "End":
+        void this.engine.setImageIndex(this.sliceCount - 1);
+        e.preventDefault();
+        break;
+    }
+  };
+
+  private toolButton(tool: ToolDescriptor) {
     return html`<button
       type="button"
-      aria-pressed=${this.activeTool === tool}
-      @click=${() => this.setPrimaryTool(tool)}
-      title=${label}
+      aria-pressed=${this.activeTool === tool.id}
+      @click=${() => this.setPrimaryTool(tool.id)}
+      title=${tool.label}
     >
-      ${label}
+      ${tool.label}
     </button>`;
   }
 
   override render() {
     return html`
       <div class=${`toolbar ${this.noToolbar ? "hidden" : ""}`} part="toolbar">
-        ${this.toolButton("windowLevel", "W/L")}
-        ${this.toolButton("zoom", "Zoom")}
-        ${this.toolButton("pan", "Pan")}
-        ${this.toolButton("scroll", "Scroll")}
+        <div class="group">${MANIPULATION_TOOLS.map((t) => this.toolButton(t))}</div>
+        <div class="divider"></div>
+        <div class="group">${MEASUREMENT_TOOLS.map((t) => this.toolButton(t))}</div>
+        <div class="divider"></div>
         <select
           @change=${(e: Event) =>
             this.applyPreset((e.target as HTMLSelectElement).value)}
@@ -257,13 +332,21 @@ export class OpdicomViewer extends LitElement {
             (name) => html`<option value=${name}>${name}</option>`,
           )}
         </select>
+        <button type="button" @click=${() => this.clearMeasurements()} title="Clear measurements">
+          Clear
+        </button>
         <button type="button" @click=${() => this.reset()} title="Reset view">
           Reset
         </button>
         <span class="spacer"></span>
+        <span class="slice" ?hidden=${this.sliceCount <= 1}>
+          ${this.sliceIndex + 1} / ${this.sliceCount}
+        </span>
       </div>
       <div
         class="stage"
+        tabindex="0"
+        @keydown=${this.onKeyDown}
         @drop=${this.noDnd ? null : this.onDrop}
         @dragover=${this.noDnd ? null : this.onDragOver}
         @dragleave=${this.noDnd ? null : this.onDragLeave}
