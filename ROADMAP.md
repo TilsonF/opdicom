@@ -26,9 +26,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Cine playback — play/pause + fps control for multi-image series
   (`play`/`pause`/`togglePlay`/`isPlaying`, clamped frame rate)
 
-## v0.3 — Export & interop
-- ⬜ Export viewport to PNG/JPEG
-- ⬜ Export annotated capture (burned-in overlays)
+## v0.3 — Export & interop 🚧
+- ✅ Export viewport to PNG/JPEG (`exportImage`/`downloadImage` + toolbar button)
+- ✅ Export annotated capture (burned-in SVG overlays via `captureToCanvas`)
 - ⬜ Export/download DICOM
 - ⬜ DICOMweb: WADO-RS (retrieve) + QIDO-RS (query)
 
