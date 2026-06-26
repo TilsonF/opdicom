@@ -47,6 +47,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ⬜ WebGPU rendering path
 
 ## Cross-cutting (ongoing)
+- ✅ i18n (en/es) for the Web Component UI + in-toolbar language selector
 - ⬜ Theming presets (light/dark/high-contrast) + docs for CSS custom props
 - ⬜ Accessibility pass (keyboard, ARIA, focus management)
 - ⬜ Performance: large series, progressive loading, web worker tuning
