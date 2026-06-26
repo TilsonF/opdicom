@@ -25,7 +25,11 @@ export function ensureInitialized(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       await coreInit();
-      dicomImageLoaderInit();
+      // Use the classic (legacy) metadata provider + loaders. In v5.0.13 the
+      // new naturalized-metadata path for dicomfile/wadors is unstable (hangs
+      // in addDicomPart10Instance); the legacy loaders are the proven path and
+      // also drive the wadors metaDataManager our DICOMweb support populates.
+      dicomImageLoaderInit({ useLegacyMetadataProvider: true });
       await toolsInit();
 
       // Manipulation tools.

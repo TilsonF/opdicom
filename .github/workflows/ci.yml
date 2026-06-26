@@ -70,3 +70,26 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: pnpm audit (fail on high+)
         run: pnpm audit --audit-level high
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: pnpm test:e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

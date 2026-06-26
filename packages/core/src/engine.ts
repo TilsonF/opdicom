@@ -4,7 +4,7 @@ import {
   eventTarget,
   type Types,
 } from "@cornerstonejs/core";
-import { wadouri } from "@cornerstonejs/dicom-image-loader";
+import { wadors, wadouri } from "@cornerstonejs/dicom-image-loader";
 import {
   Enums as ToolEnums,
   ToolGroupManager,
@@ -16,6 +16,16 @@ import {
   normalizeCineOptions,
   type CineOptions,
 } from "./cine.js";
+import {
+  DicomWebClient,
+  DwTag,
+  buildWadoRsImageId,
+  dwString,
+  sortInstanceMetadata,
+  type DicomJsonDataset,
+  type DicomWebConfig,
+  type SeriesQuery,
+} from "./dicomweb.js";
 import {
   buildExportFilename,
   mimeForFormat,
@@ -203,6 +213,44 @@ export class OpDicomEngine {
     );
     await this.loadImageIds(imageIds);
     return { imageIds, metadata };
+  }
+
+  /**
+   * Load a DICOM series from a DICOMweb server (WADO-RS). Retrieves the series
+   * metadata, registers each instance with Cornerstone, builds `wadors`
+   * imageIds sorted by InstanceNumber and displays the stack.
+   */
+  async loadFromDicomWeb(
+    config: DicomWebConfig,
+    query: SeriesQuery,
+  ): Promise<{ imageIds: string[]; instances: DicomJsonDataset[] }> {
+    const client = new DicomWebClient(config);
+    const instances = sortInstanceMetadata(
+      await client.retrieveSeriesMetadata(query),
+    );
+
+    const imageIds: string[] = [];
+    for (const instance of instances) {
+      const sopInstanceUID = dwString(instance, DwTag.SOPInstanceUID);
+      const seriesInstanceUID =
+        dwString(instance, DwTag.SeriesInstanceUID) ?? query.seriesInstanceUID;
+      if (!sopInstanceUID) continue;
+      const imageId = buildWadoRsImageId({
+        wadoRsRoot: config.wadoRsRoot,
+        studyInstanceUID: query.studyInstanceUID,
+        seriesInstanceUID,
+        sopInstanceUID,
+      });
+      // Register the instance metadata so Cornerstone can render the frame.
+      wadors.metaDataManager.add(imageId, instance as never);
+      imageIds.push(imageId);
+    }
+
+    if (imageIds.length === 0) {
+      throw new Error("OpDICOM: DICOMweb series returned no displayable instances");
+    }
+    await this.loadImageIds(imageIds);
+    return { imageIds, instances };
   }
 
   /** Load already-resolved Cornerstone imageIds (wadouri/wadors/dicomweb). */
