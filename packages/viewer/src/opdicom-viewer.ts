@@ -11,6 +11,7 @@ import {
 } from "@opdicom/core";
 import { LitElement, css, html, type PropertyValues } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
+import { LANGS, resolveLang, t, type Lang, type MessageKey } from "./i18n.js";
 
 /**
  * `<opdicom-viewer>` — a framework-agnostic DICOM viewer Web Component.
@@ -116,6 +117,9 @@ export class OpdicomViewer extends LitElement {
       font-size: 12px;
       color: var(--opdicom-muted, #9aa4b2);
     }
+    .lang {
+      min-width: 56px;
+    }
     [hidden] {
       display: none !important;
     }
@@ -157,6 +161,12 @@ export class OpdicomViewer extends LitElement {
   /** Disable drag & drop loading. */
   @property({ type: Boolean, attribute: "no-dnd" }) noDnd = false;
 
+  /** UI language ("en" | "es"). Defaults to the browser language. */
+  @property({ reflect: true })
+  locale: Lang = resolveLang(
+    typeof navigator !== "undefined" ? navigator.language : "en",
+  );
+
   @state() private activeTool: OpDicomTool = "windowLevel";
   @state() private hasImage = false;
   @state() private dragover = false;
@@ -165,7 +175,8 @@ export class OpdicomViewer extends LitElement {
   @state() private isPlaying = false;
   @state() private canSaveDicom = false;
   @state() private fps = DEFAULT_FPS;
-  @state() private status = "Drop a DICOM file here, or use loadFiles().";
+  /** Dynamic status (loading/error); empty shows the localized drop hint. */
+  @state() private status = "";
 
   @query(".viewport") private viewportEl!: HTMLDivElement;
 
@@ -216,7 +227,7 @@ export class OpdicomViewer extends LitElement {
   async loadFiles(files: ArrayLike<Blob>): Promise<LoadResult | undefined> {
     await this.bootstrap();
     try {
-      this.status = "Loading…";
+      this.status = t(this.locale, "loading");
       const result = await this.engine!.loadFiles(files);
       this.metadata = result.metadata;
       this.hasImage = result.imageIds.length > 0;
@@ -364,54 +375,60 @@ export class OpdicomViewer extends LitElement {
   };
 
   private toolButton(tool: ToolDescriptor) {
+    const label = t(this.locale, tool.id as MessageKey);
     return html`<button
       type="button"
       aria-pressed=${this.activeTool === tool.id}
       @click=${() => this.setPrimaryTool(tool.id)}
-      title=${tool.label}
+      title=${label}
     >
-      ${tool.label}
+      ${label}
     </button>`;
   }
 
   override render() {
+    const tr = (k: MessageKey) => t(this.locale, k);
     return html`
       <div class=${`toolbar ${this.noToolbar ? "hidden" : ""}`} part="toolbar">
-        <div class="group">${MANIPULATION_TOOLS.map((t) => this.toolButton(t))}</div>
+        <div class="group">
+          ${MANIPULATION_TOOLS.map((desc) => this.toolButton(desc))}
+        </div>
         <div class="divider"></div>
-        <div class="group">${MEASUREMENT_TOOLS.map((t) => this.toolButton(t))}</div>
+        <div class="group">
+          ${MEASUREMENT_TOOLS.map((desc) => this.toolButton(desc))}
+        </div>
         <div class="divider"></div>
         <select
           @change=${(e: Event) =>
             this.applyPreset((e.target as HTMLSelectElement).value)}
-          title="Window presets"
+          title=${tr("preset")}
         >
-          <option value="">Preset…</option>
+          <option value="">${tr("preset")}</option>
           ${Object.keys(WINDOW_PRESETS).map(
             (name) => html`<option value=${name}>${name}</option>`,
           )}
         </select>
-        <button type="button" @click=${() => this.clearMeasurements()} title="Clear measurements">
-          Clear
+        <button type="button" @click=${() => this.clearMeasurements()} title=${tr("clear")}>
+          ${tr("clear")}
         </button>
-        <button type="button" @click=${() => this.reset()} title="Reset view">
-          Reset
+        <button type="button" @click=${() => this.reset()} title=${tr("reset")}>
+          ${tr("reset")}
         </button>
         <button
           type="button"
           ?disabled=${!this.hasImage}
           @click=${() => void this.downloadImage({ format: "png" })}
-          title="Export PNG (with annotations)"
+          title=${tr("exportPng")}
         >
-          ⬇ PNG
+          ${tr("exportPng")}
         </button>
         <button
           type="button"
           ?disabled=${!this.canSaveDicom}
           @click=${() => this.downloadDicom()}
-          title="Download original DICOM"
+          title=${tr("exportDicom")}
         >
-          ⬇ DICOM
+          ${tr("exportDicom")}
         </button>
         <div class="divider" ?hidden=${this.sliceCount <= 1}></div>
         <div class="group" ?hidden=${this.sliceCount <= 1}>
@@ -419,7 +436,7 @@ export class OpdicomViewer extends LitElement {
             type="button"
             aria-pressed=${this.isPlaying}
             @click=${() => this.togglePlay()}
-            title=${this.isPlaying ? "Pause cine" : "Play cine"}
+            title=${this.isPlaying ? tr("pause") : tr("play")}
           >
             ${this.isPlaying ? "⏸" : "▶"}
           </button>
@@ -431,14 +448,25 @@ export class OpdicomViewer extends LitElement {
             .value=${String(this.fps)}
             @change=${(e: Event) =>
               this.setFps(Number((e.target as HTMLInputElement).value))}
-            title="Frames per second"
+            title=${tr("fps")}
           />
-          <span class="fps-label">fps</span>
+          <span class="fps-label">${tr("fps")}</span>
         </div>
         <span class="spacer"></span>
         <span class="slice" ?hidden=${this.sliceCount <= 1}>
           ${this.sliceIndex + 1} / ${this.sliceCount}
         </span>
+        <select
+          class="lang"
+          title=${tr("language")}
+          .value=${this.locale}
+          @change=${(e: Event) =>
+            (this.locale = (e.target as HTMLSelectElement).value as Lang)}
+        >
+          ${LANGS.map(
+            (l) => html`<option value=${l}>${l.toUpperCase()}</option>`,
+          )}
+        </select>
       </div>
       <div
         class="stage"
@@ -452,7 +480,7 @@ export class OpdicomViewer extends LitElement {
         <div
           class=${`dropzone ${this.dragover ? "dragover" : ""} ${this.hasImage ? "hidden" : ""}`}
         >
-          ${this.status}
+          ${this.status || t(this.locale, "dropHint")}
         </div>
       </div>
     `;
