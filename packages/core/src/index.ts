@@ -29,6 +29,7 @@ export {
   mimeForFormat,
   sanitizeFilename,
   buildExportFilename,
+  buildDicomFilename,
   normalizeQuality,
 } from "./export.js";
 export type { ImageFormat, ExportOptions } from "./export.js";

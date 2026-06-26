@@ -58,6 +58,16 @@ export function buildExportFilename(
   return `${stem}.${ext}`;
 }
 
+/**
+ * Build a download file name for a raw DICOM instance (`.dcm`). Falls back to a
+ * sensible default when `base` is empty after sanitization.
+ */
+export function buildDicomFilename(base: string | undefined): string {
+  const cleaned = base ? sanitizeFilename(base.replace(/\.dcm$/i, "")) : "";
+  const stem = cleaned.length > 0 ? cleaned : "opdicom-instance";
+  return `${stem}.dcm`;
+}
+
 /** Clamp an optional JPEG quality into the valid 0..1 range. */
 export function normalizeQuality(quality: number | undefined): number {
   if (quality === undefined || !Number.isFinite(quality)) return 0.92;

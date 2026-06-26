@@ -27,6 +27,7 @@ import {
   type SeriesQuery,
 } from "./dicomweb.js";
 import {
+  buildDicomFilename,
   buildExportFilename,
   mimeForFormat,
   normalizeQuality,
@@ -103,6 +104,8 @@ export class OpDicomEngine {
   private renderingEngine?: RenderingEngine;
   private destroyed = false;
   private playing = false;
+  /** Original DICOM blobs for file-loaded stacks, indexed like the stack. */
+  private sourceBlobs: Blob[] = [];
   private readonly handleStackNewImage = (evt: Event): void => {
     const detail = (evt as CustomEvent).detail as
       | { viewportId?: string; imageIdIndex?: number }
@@ -212,6 +215,8 @@ export class OpDicomEngine {
       }),
     );
     await this.loadImageIds(imageIds);
+    // Retain originals so the displayed instance can be downloaded as DICOM.
+    this.sourceBlobs = blobs;
     return { imageIds, metadata };
   }
 
@@ -258,6 +263,8 @@ export class OpDicomEngine {
     const viewport = this.getViewport();
     if (!viewport) throw new Error("OpDICOM: engine not initialized");
     if (this.playing) this.pause();
+    // Raw imageIds (incl. DICOMweb) have no retained originals; clear them.
+    this.sourceBlobs = [];
     await viewport.setStack(imageIds, startIndex);
     viewport.render();
     this.onImageChange?.(this.getCurrentImageIndex(), this.getImageCount());
@@ -377,6 +384,30 @@ export class OpDicomEngine {
       mimeForFormat(format),
       format === "jpeg" ? normalizeQuality(options.quality) : undefined,
     );
+  }
+
+  /** Whether the displayed instance has an original DICOM available to save. */
+  canDownloadDicom(): boolean {
+    return this.sourceBlobs[this.getCurrentImageIndex()] !== undefined;
+  }
+
+  /**
+   * Download the original DICOM (Part-10) of the currently displayed instance.
+   * Available for file-loaded stacks; DICOMweb retrieval is a separate step.
+   */
+  downloadCurrentDicom(filename?: string): void {
+    const blob = this.sourceBlobs[this.getCurrentImageIndex()];
+    if (!blob) {
+      throw new Error("OpDICOM: no original DICOM available for this instance");
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = buildDicomFilename(filename);
+    link.rel = "noopener";
+    link.click();
+    // Revoke after a tick so the download isn't cancelled.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   /** Export and trigger a browser download of the current view. */

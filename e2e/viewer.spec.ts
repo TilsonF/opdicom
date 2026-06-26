@@ -70,3 +70,14 @@ test("exports the view as a PNG download", async ({ page }) => {
   ]);
   expect(download.suggestedFilename()).toMatch(/\.png$/);
 });
+
+test("downloads the original DICOM", async ({ page }) => {
+  await loadSyntheticDicom(page);
+  const dicomBtn = page.getByRole("button", { name: "DICOM" });
+  await expect(dicomBtn).toBeEnabled();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    dicomBtn.click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/\.dcm$/);
+});
