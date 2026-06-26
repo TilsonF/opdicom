@@ -30,7 +30,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Export viewport to PNG/JPEG (`exportImage`/`downloadImage` + toolbar button)
 - ✅ Export annotated capture (burned-in SVG overlays via `captureToCanvas`)
 - ⬜ Export/download DICOM
-- ⬜ DICOMweb: WADO-RS (retrieve) + QIDO-RS (query)
+- ✅ DICOMweb: WADO-RS (retrieve) + QIDO-RS (query) — built-in fetch client,
+  `loadFromDicomWeb`; see [docs/CONNECTIVITY.md](./docs/CONNECTIVITY.md)
+- ✅ E2E tests (Playwright) — real-browser render/tool/export validation
 
 ## v0.4 — Framework wrappers
 - ⬜ `@opdicom/react`
@@ -48,5 +50,5 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ⬜ Theming presets (light/dark/high-contrast) + docs for CSS custom props
 - ⬜ Accessibility pass (keyboard, ARIA, focus management)
 - ⬜ Performance: large series, progressive loading, web worker tuning
-- ⬜ E2E tests (Playwright) with a public sample dataset
+- ✅ E2E tests (Playwright) with a synthetic in-repo DICOM (no PHI/network)
 - ⬜ Publish packages to npm (Changesets release flow)

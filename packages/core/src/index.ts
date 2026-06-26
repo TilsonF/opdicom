@@ -32,6 +32,23 @@ export {
   normalizeQuality,
 } from "./export.js";
 export type { ImageFormat, ExportOptions } from "./export.js";
+export {
+  DicomWebClient,
+  DwTag,
+  dwValue,
+  dwString,
+  dwNumber,
+  trimRoot,
+  buildWadoRsImageId,
+  sortInstanceMetadata,
+} from "./dicomweb.js";
+export type {
+  DicomWebConfig,
+  SeriesQuery,
+  DicomJsonDataset,
+  DicomJsonElement,
+  WadoRsImageIdParts,
+} from "./dicomweb.js";
 
 // Re-export the parser surface so consumers get metadata types from one place.
 export {
