@@ -163,6 +163,7 @@ export class OpdicomViewer extends LitElement {
   @state() private sliceIndex = 0;
   @state() private sliceCount = 0;
   @state() private isPlaying = false;
+  @state() private canSaveDicom = false;
   @state() private fps = DEFAULT_FPS;
   @state() private status = "Drop a DICOM file here, or use loadFiles().";
 
@@ -220,6 +221,7 @@ export class OpdicomViewer extends LitElement {
       this.metadata = result.metadata;
       this.hasImage = result.imageIds.length > 0;
       this.isPlaying = false;
+      this.canSaveDicom = this.engine?.canDownloadDicom() ?? false;
       this.applyFirstPreset();
       this.dispatchEvent(
         new CustomEvent("opdicom-load", { detail: result, bubbles: true, composed: true }),
@@ -271,6 +273,17 @@ export class OpdicomViewer extends LitElement {
     const filename =
       options.filename ?? this.metadata[0]?.series.description ?? "opdicom-export";
     await this.engine?.downloadImage({ ...options, filename });
+  }
+
+  /** Download the original DICOM of the currently displayed instance. */
+  downloadDicom(filename?: string): void {
+    const name =
+      filename ?? this.metadata[0]?.series.description ?? "opdicom-instance";
+    try {
+      this.engine?.downloadCurrentDicom(name);
+    } catch (error) {
+      this.emitError(error);
+    }
   }
 
   /** Toggle cine playback at the current fps. */
@@ -391,6 +404,14 @@ export class OpdicomViewer extends LitElement {
           title="Export PNG (with annotations)"
         >
           ⬇ PNG
+        </button>
+        <button
+          type="button"
+          ?disabled=${!this.canSaveDicom}
+          @click=${() => this.downloadDicom()}
+          title="Download original DICOM"
+        >
+          ⬇ DICOM
         </button>
         <div class="divider" ?hidden=${this.sliceCount <= 1}></div>
         <div class="group" ?hidden=${this.sliceCount <= 1}>

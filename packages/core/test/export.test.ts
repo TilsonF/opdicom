@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDicomFilename,
   buildExportFilename,
   mimeForFormat,
   normalizeQuality,
@@ -40,6 +41,22 @@ describe("buildExportFilename", () => {
     expect(buildExportFilename("", "png")).toBe("opdicom-export.png");
     expect(buildExportFilename("///", "png")).toBe("opdicom-export.png");
     expect(buildExportFilename(undefined, "jpeg")).toBe("opdicom-export.jpg");
+  });
+});
+
+describe("buildDicomFilename", () => {
+  it("adds a .dcm extension", () => {
+    expect(buildDicomFilename("series-3")).toBe("series_3.dcm");
+  });
+
+  it("replaces an existing .dcm extension", () => {
+    expect(buildDicomFilename("scan.dcm")).toBe("scan.dcm");
+    expect(buildDicomFilename("scan.DCM")).toBe("scan.dcm");
+  });
+
+  it("falls back to a default when empty", () => {
+    expect(buildDicomFilename("")).toBe("opdicom-instance.dcm");
+    expect(buildDicomFilename(undefined)).toBe("opdicom-instance.dcm");
   });
 });
 

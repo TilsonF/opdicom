@@ -26,10 +26,10 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Cine playback — play/pause + fps control for multi-image series
   (`play`/`pause`/`togglePlay`/`isPlaying`, clamped frame rate)
 
-## v0.3 — Export & interop 🚧
+## v0.3 — Export & interop ✅
 - ✅ Export viewport to PNG/JPEG (`exportImage`/`downloadImage` + toolbar button)
 - ✅ Export annotated capture (burned-in SVG overlays via `captureToCanvas`)
-- ⬜ Export/download DICOM
+- ✅ Download original DICOM of the current instance (`downloadCurrentDicom`)
 - ✅ DICOMweb: WADO-RS (retrieve) + QIDO-RS (query) — built-in fetch client,
   `loadFromDicomWeb`; see [docs/CONNECTIVITY.md](./docs/CONNECTIVITY.md)
 - ✅ E2E tests (Playwright) — real-browser render/tool/export validation
