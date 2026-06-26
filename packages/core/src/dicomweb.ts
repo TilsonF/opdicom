@@ -55,9 +55,11 @@ export function dwNumber(
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Strip a single trailing slash from a root URL. */
+/** Strip trailing slashes from a root URL (linear scan; no ReDoS). */
 export function trimRoot(root: string): string {
-  return root.replace(/\/+$/, "");
+  let end = root.length;
+  while (end > 0 && root[end - 1] === "/") end--;
+  return root.slice(0, end);
 }
 
 export interface WadoRsImageIdParts {
