@@ -85,6 +85,10 @@ export class OpdicomViewer extends LitElement {
     select:hover {
       background: var(--opdicom-control-hover, #2c333d);
     }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
     button[aria-pressed="true"] {
       background: var(--opdicom-accent, #2f6df6);
       border-color: var(--opdicom-accent, #2f6df6);
@@ -260,6 +264,15 @@ export class OpdicomViewer extends LitElement {
     this.engine?.scrollStack(-1);
   }
 
+  /** Download the current view as an image (PNG by default, with annotations). */
+  async downloadImage(
+    options: Parameters<OpDicomEngine["downloadImage"]>[0] = {},
+  ): Promise<void> {
+    const filename =
+      options.filename ?? this.metadata[0]?.series.description ?? "opdicom-export";
+    await this.engine?.downloadImage({ ...options, filename });
+  }
+
   /** Toggle cine playback at the current fps. */
   togglePlay(): void {
     this.isPlaying = this.engine?.togglePlay({ fps: this.fps }) ?? false;
@@ -370,6 +383,14 @@ export class OpdicomViewer extends LitElement {
         </button>
         <button type="button" @click=${() => this.reset()} title="Reset view">
           Reset
+        </button>
+        <button
+          type="button"
+          ?disabled=${!this.hasImage}
+          @click=${() => void this.downloadImage({ format: "png" })}
+          title="Export PNG (with annotations)"
+        >
+          ⬇ PNG
         </button>
         <div class="divider" ?hidden=${this.sliceCount <= 1}></div>
         <div class="group" ?hidden=${this.sliceCount <= 1}>

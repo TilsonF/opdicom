@@ -25,6 +25,13 @@ export {
   MAX_FPS,
 } from "./cine.js";
 export type { CineOptions, NormalizedCine } from "./cine.js";
+export {
+  mimeForFormat,
+  sanitizeFilename,
+  buildExportFilename,
+  normalizeQuality,
+} from "./export.js";
+export type { ImageFormat, ExportOptions } from "./export.js";
 
 // Re-export the parser surface so consumers get metadata types from one place.
 export {

@@ -16,6 +16,12 @@ import {
   normalizeCineOptions,
   type CineOptions,
 } from "./cine.js";
+import {
+  buildExportFilename,
+  mimeForFormat,
+  normalizeQuality,
+  type ExportOptions,
+} from "./export.js";
 import { ensureInitialized } from "./init.js";
 import {
   TOOLS,
@@ -41,6 +47,34 @@ export interface LoadResult {
 }
 
 let instanceCounter = 0;
+
+/**
+ * Composite an annotation SVG layer onto a 2D canvas context. The SVG is cloned
+ * and sized to the target canvas, serialized to a data URL and rasterized via
+ * an Image. Best-effort: on any load error the image is left without overlays.
+ */
+function drawSvgOverlay(
+  svg: SVGSVGElement,
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): Promise<void> {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("width", String(width));
+  clone.setAttribute("height", String(height));
+  clone.setAttribute("viewBox", `0 0 ${svg.clientWidth} ${svg.clientHeight}`);
+  const serialized = new XMLSerializer().serializeToString(clone);
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve();
+    };
+    img.onerror = () => resolve();
+    img.src = url;
+  });
+}
 
 /**
  * Headless, framework-agnostic DICOM viewer engine. Owns one Cornerstone3D
@@ -263,6 +297,49 @@ export class OpDicomEngine {
   clearMeasurements(): void {
     annotation.state.removeAllAnnotations();
     this.getViewport()?.render();
+  }
+
+  // ---- export --------------------------------------------------------------
+
+  /**
+   * Render the current view to a fresh canvas, optionally compositing the
+   * measurement/annotation SVG overlay on top of the image.
+   */
+  async captureToCanvas(withAnnotations = true): Promise<HTMLCanvasElement> {
+    const source = this.getViewport()?.getCanvas();
+    if (!source) throw new Error("OpDICOM: nothing to export");
+    const out = document.createElement("canvas");
+    out.width = source.width;
+    out.height = source.height;
+    const ctx = out.getContext("2d");
+    if (!ctx) throw new Error("OpDICOM: 2D canvas context unavailable");
+    ctx.drawImage(source, 0, 0);
+    if (withAnnotations) {
+      const svg = this.element.querySelector<SVGSVGElement>("svg.svg-layer");
+      if (svg) await drawSvgOverlay(svg, ctx, out.width, out.height);
+    }
+    return out;
+  }
+
+  /** Export the current view as a data URL (PNG/JPEG). */
+  async exportImage(options: ExportOptions = {}): Promise<string> {
+    const format = options.format ?? "png";
+    const canvas = await this.captureToCanvas(options.withAnnotations ?? true);
+    return canvas.toDataURL(
+      mimeForFormat(format),
+      format === "jpeg" ? normalizeQuality(options.quality) : undefined,
+    );
+  }
+
+  /** Export and trigger a browser download of the current view. */
+  async downloadImage(options: ExportOptions = {}): Promise<void> {
+    const format = options.format ?? "png";
+    const dataUrl = await this.exportImage(options);
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = buildExportFilename(options.filename, format);
+    link.rel = "noopener";
+    link.click();
   }
 
   /** Reset pan/zoom/VOI to the image defaults. */
