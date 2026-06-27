@@ -33,13 +33,26 @@ import {
   normalizeQuality,
   type ExportOptions,
 } from "./export.js";
+import {
+  sampleValue,
+  worldToIJK,
+  type ImageGeometry,
+  type Vec3,
+} from "./geometry.js";
 import { ensureInitialized } from "./init.js";
 import {
   TOOLS,
   cornerstoneToolName,
   type OpDicomTool,
 } from "./tools.js";
-import { voiFromWindowLevel } from "./voi.js";
+import { voiFromWindowLevel, windowLevelFromVoi } from "./voi.js";
+
+/** Result of sampling the image under a canvas point. */
+export interface ProbeResult {
+  world: Vec3;
+  ijk: [number, number];
+  value: number | undefined;
+}
 
 export type { OpDicomTool } from "./tools.js";
 
@@ -338,6 +351,48 @@ export class OpDicomEngine {
     if (!viewport) return;
     viewport.setProperties({ voiRange: voiFromWindowLevel(center, width) });
     viewport.render();
+  }
+
+  /** Current window center/width (from the active VOI range), if any. */
+  getDisplayWindowLevel(): { center: number; width: number } | undefined {
+    const range = this.getViewport()?.getProperties().voiRange;
+    return range ? windowLevelFromVoi(range) : undefined;
+  }
+
+  /** Current zoom factor (1 = fit). */
+  getZoomFactor(): number {
+    return this.getViewport()?.getZoom() ?? 1;
+  }
+
+  /**
+   * Sample the displayed image under a canvas-space point: returns the world
+   * (patient) coordinate, the image column/row and the pixel value (undefined
+   * outside the image). Best-effort; returns undefined if nothing is loaded.
+   */
+  probeAtCanvas(canvasPos: [number, number]): ProbeResult | undefined {
+    const viewport = this.getViewport();
+    if (!viewport) return undefined;
+    try {
+      const world = viewport.canvasToWorld(canvasPos) as Vec3;
+      const data = viewport.getImageData();
+      if (!data) return undefined;
+      const geom: ImageGeometry = {
+        origin: data.origin as Vec3,
+        spacing: data.spacing as Vec3,
+        direction: Array.from(data.direction as ArrayLike<number>),
+        dimensions: data.dimensions as Vec3,
+      };
+      const [i, j] = worldToIJK(world, geom);
+      const value = sampleValue(
+        data.scalarData as ArrayLike<number>,
+        geom.dimensions,
+        i,
+        j,
+      );
+      return { world, ijk: [i, j], value };
+    } catch {
+      return undefined;
+    }
   }
 
   /** Toggle photometric inversion (white ⇄ black). */

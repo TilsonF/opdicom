@@ -3,7 +3,14 @@ export type {
   OpDicomEngineOptions,
   OpDicomTool,
   LoadResult,
+  ProbeResult,
 } from "./engine.js";
+export {
+  worldToIJK,
+  sampleValue,
+  isInBounds,
+} from "./geometry.js";
+export type { ImageGeometry, Vec3 } from "./geometry.js";
 export { ensureInitialized } from "./init.js";
 export {
   TOOLS,
