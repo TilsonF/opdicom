@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DRAW_TOOLS,
   MANIPULATION_TOOLS,
   MEASUREMENT_TOOLS,
   TOOLS,
@@ -38,8 +39,19 @@ describe("tool descriptors", () => {
     expect(MEASUREMENT_TOOLS.every((t) => t.category === "measurement")).toBe(true);
   });
 
-  it("partitions all tools into the two categories", () => {
-    expect(MANIPULATION_TOOLS.length + MEASUREMENT_TOOLS.length).toBe(TOOLS.length);
+  it("partitions all tools into the three categories", () => {
+    expect(
+      MANIPULATION_TOOLS.length +
+        MEASUREMENT_TOOLS.length +
+        DRAW_TOOLS.length,
+    ).toBe(TOOLS.length);
+  });
+
+  it("exposes the drawing tools with verified cornerstone names", () => {
+    expect(cornerstoneToolName("freehand")).toBe("PlanarFreehandROI");
+    expect(cornerstoneToolName("arrow")).toBe("ArrowAnnotate");
+    expect(cornerstoneToolName("cobbAngle")).toBe("CobbAngle");
+    expect(DRAW_TOOLS.every((t) => t.category === "draw")).toBe(true);
   });
 
   it("getToolDescriptor returns label + category", () => {

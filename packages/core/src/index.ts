@@ -16,6 +16,7 @@ export {
   TOOLS,
   MANIPULATION_TOOLS,
   MEASUREMENT_TOOLS,
+  DRAW_TOOLS,
   getToolDescriptor,
   cornerstoneToolName,
   isMeasurementTool,

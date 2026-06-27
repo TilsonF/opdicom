@@ -1,5 +1,6 @@
 import {
   DEFAULT_FPS,
+  DRAW_TOOLS,
   MANIPULATION_TOOLS,
   MEASUREMENT_TOOLS,
   OpDicomEngine,
@@ -509,6 +510,10 @@ export class OpdicomViewer extends LitElement {
         <div class="divider"></div>
         <div class="group">
           ${MEASUREMENT_TOOLS.map((desc) => this.toolButton(desc))}
+        </div>
+        <div class="divider"></div>
+        <div class="group">
+          ${DRAW_TOOLS.map((desc) => this.toolButton(desc))}
         </div>
         <div class="divider"></div>
         <select
