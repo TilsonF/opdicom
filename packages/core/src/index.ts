@@ -23,6 +23,12 @@ export {
 export type { ToolDescriptor, ToolCategory } from "./tools.js";
 export { WINDOW_PRESETS } from "./presets.js";
 export type { WindowPresetName } from "./presets.js";
+export {
+  PREFERRED_COLORMAPS,
+  BUILTIN_COLORMAPS,
+  pickColormaps,
+} from "./colormaps.js";
+export type { ColormapDef } from "./colormaps.js";
 export { voiFromWindowLevel, windowLevelFromVoi } from "./voi.js";
 export type { VoiRange } from "./voi.js";
 export {

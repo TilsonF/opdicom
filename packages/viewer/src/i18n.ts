@@ -28,6 +28,8 @@ export type MessageKey =
   | "fps"
   | "language"
   | "overlay"
+  | "colormap"
+  | "smoothing"
   | "dropHint"
   | "loading";
 
@@ -53,6 +55,8 @@ const en: Messages = {
   fps: "fps",
   language: "Language",
   overlay: "Overlay",
+  colormap: "Colormap…",
+  smoothing: "Smooth",
   dropHint: "Drop a DICOM file here, or use loadFiles().",
   loading: "Loading…",
 };
@@ -77,6 +81,8 @@ const es: Messages = {
   fps: "fps",
   language: "Idioma",
   overlay: "Sobrecapa",
+  colormap: "Mapa de color…",
+  smoothing: "Suavizar",
   dropHint: "Arrastra un archivo DICOM aquí, o usa loadFiles().",
   loading: "Cargando…",
 };
