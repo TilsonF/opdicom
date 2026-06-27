@@ -34,10 +34,10 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
   `loadFromDicomWeb`; see [docs/CONNECTIVITY.md](./docs/CONNECTIVITY.md)
 - ✅ E2E tests (Playwright) — real-browser render/tool/export validation
 
-## v0.4 — Framework wrappers
-- ⬜ `@opdicom/react`
-- ⬜ `@opdicom/vue`
-- ⬜ `@opdicom/angular`
+## v0.4 — Framework wrappers 🚧
+- ✅ `@opdicom/react` (typed props/events + ref handle)
+- ✅ `@opdicom/vue` (Vue 3 component)
+- ✅ Angular usage via `CUSTOM_ELEMENTS_SCHEMA` — see [docs/FRAMEWORKS.md](./docs/FRAMEWORKS.md)
 - ⬜ Live docs site + hosted demo (GitHub Pages)
 
 ## v0.5 — Advanced rendering

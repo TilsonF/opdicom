@@ -1,0 +1,38 @@
+{
+  "name": "@opdicom/vue",
+  "version": "0.1.0",
+  "description": "Vue 3 wrapper for the <opdicom-viewer> DICOM viewer Web Component.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["dist", "src"],
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --external vue",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "vue": ">=3.3"
+  },
+  "dependencies": {
+    "@opdicom/viewer": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "vue": "^3.5.0"
+  },
+  "keywords": ["dicom", "viewer", "vue", "web-component"]
+}
