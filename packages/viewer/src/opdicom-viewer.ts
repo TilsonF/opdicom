@@ -7,6 +7,7 @@ import {
   type DicomMetadata,
   type LoadResult,
   type OpDicomTool,
+  type ProbeResult,
   type ToolDescriptor,
 } from "@opdicom/core";
 import { LitElement, css, html, type PropertyValues } from "lit";
@@ -153,6 +154,40 @@ export class OpdicomViewer extends LitElement {
     .hidden {
       display: none !important;
     }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--opdicom-overlay-fg, #e8eef6);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+      font-variant-numeric: tabular-nums;
+    }
+    .overlay .corner {
+      position: absolute;
+      padding: 8px 10px;
+      max-width: 46%;
+      white-space: pre-line;
+    }
+    .overlay .tl {
+      top: 0;
+      left: 0;
+    }
+    .overlay .tr {
+      top: 0;
+      right: 0;
+      text-align: right;
+    }
+    .overlay .bl {
+      bottom: 0;
+      left: 0;
+    }
+    .overlay .br {
+      bottom: 0;
+      right: 0;
+      text-align: right;
+    }
   `;
 
   /** Hide the built-in toolbar (use your own UI via the public methods). */
@@ -175,6 +210,10 @@ export class OpdicomViewer extends LitElement {
   @state() private isPlaying = false;
   @state() private canSaveDicom = false;
   @state() private fps = DEFAULT_FPS;
+  @state() private showOverlay = true;
+  @state() private wl?: { center: number; width: number };
+  @state() private zoom = 1;
+  @state() private cursor?: ProbeResult;
   /** Dynamic status (loading/error); empty shows the localized drop hint. */
   @state() private status = "";
 
@@ -234,6 +273,8 @@ export class OpdicomViewer extends LitElement {
       this.isPlaying = false;
       this.canSaveDicom = this.engine?.canDownloadDicom() ?? false;
       this.applyFirstPreset();
+      this.wl = this.engine?.getDisplayWindowLevel();
+      this.zoom = this.engine?.getZoomFactor() ?? 1;
       this.dispatchEvent(
         new CustomEvent("opdicom-load", { detail: result, bubbles: true, composed: true }),
       );
@@ -348,6 +389,27 @@ export class OpdicomViewer extends LitElement {
     this.dragover = false;
   };
 
+  private rafPending = false;
+  private lastMove?: [number, number];
+  private onMouseMove = (e: MouseEvent): void => {
+    if (!this.engine || !this.hasImage) return;
+    const rect = this.viewportEl.getBoundingClientRect();
+    this.lastMove = [e.clientX - rect.left, e.clientY - rect.top];
+    if (this.rafPending) return;
+    this.rafPending = true;
+    requestAnimationFrame(() => {
+      this.rafPending = false;
+      if (!this.engine || !this.lastMove) return;
+      this.cursor = this.engine.probeAtCanvas(this.lastMove);
+      this.wl = this.engine.getDisplayWindowLevel();
+      this.zoom = this.engine.getZoomFactor();
+    });
+  };
+
+  private onMouseLeave = (): void => {
+    this.cursor = undefined;
+  };
+
   private onKeyDown = (e: KeyboardEvent): void => {
     if (!this.engine || this.sliceCount === 0) return;
     switch (e.key) {
@@ -386,6 +448,44 @@ export class OpdicomViewer extends LitElement {
     </button>`;
   }
 
+  private overlayLayer() {
+    if (!this.showOverlay || !this.hasImage) return null;
+    const m = this.metadata[0];
+    const f1 = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "—");
+    const lines = (...xs: (string | undefined)[]) =>
+      xs.filter((x) => x && x.length).join("\n");
+    const c = this.cursor;
+    return html`
+      <div class="overlay" part="overlay">
+        <div class="corner tl">
+          ${lines(m?.patient.name, m?.patient.id, m?.series.modality)}
+        </div>
+        <div class="corner tr">
+          ${lines(m?.study.description, m?.study.date, m?.series.description)}
+        </div>
+        <div class="corner bl">
+          ${lines(
+            this.wl
+              ? `W/L: ${Math.round(this.wl.center)} / ${Math.round(this.wl.width)}`
+              : undefined,
+            `Zoom: ${Math.round(this.zoom * 100)}%`,
+          )}
+        </div>
+        <div class="corner br">
+          ${lines(
+            this.sliceCount > 1
+              ? `${this.sliceIndex + 1}/${this.sliceCount}`
+              : undefined,
+            c
+              ? `(${c.ijk[0]}, ${c.ijk[1]})${c.value !== undefined ? ` = ${Math.round(c.value)}` : ""}`
+              : undefined,
+            c ? `${f1(c.world[0])}, ${f1(c.world[1])}, ${f1(c.world[2])} mm` : undefined,
+          )}
+        </div>
+      </div>
+    `;
+  }
+
   override render() {
     const tr = (k: MessageKey) => t(this.locale, k);
     return html`
@@ -413,6 +513,14 @@ export class OpdicomViewer extends LitElement {
         </button>
         <button type="button" @click=${() => this.reset()} title=${tr("reset")}>
           ${tr("reset")}
+        </button>
+        <button
+          type="button"
+          aria-pressed=${this.showOverlay}
+          @click=${() => (this.showOverlay = !this.showOverlay)}
+          title=${tr("overlay")}
+        >
+          ${tr("overlay")}
         </button>
         <button
           type="button"
@@ -472,11 +580,14 @@ export class OpdicomViewer extends LitElement {
         class="stage"
         tabindex="0"
         @keydown=${this.onKeyDown}
+        @mousemove=${this.onMouseMove}
+        @mouseleave=${this.onMouseLeave}
         @drop=${this.noDnd ? null : this.onDrop}
         @dragover=${this.noDnd ? null : this.onDragOver}
         @dragleave=${this.noDnd ? null : this.onDragLeave}
       >
         <div class="viewport" part="viewport"></div>
+        ${this.overlayLayer()}
         <div
           class=${`dropzone ${this.dragover ? "dragover" : ""} ${this.hasImage ? "hidden" : ""}`}
         >

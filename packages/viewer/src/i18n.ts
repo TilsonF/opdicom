@@ -27,6 +27,7 @@ export type MessageKey =
   | "pause"
   | "fps"
   | "language"
+  | "overlay"
   | "dropHint"
   | "loading";
 
@@ -51,6 +52,7 @@ const en: Messages = {
   pause: "Pause",
   fps: "fps",
   language: "Language",
+  overlay: "Overlay",
   dropHint: "Drop a DICOM file here, or use loadFiles().",
   loading: "Loading…",
 };
@@ -74,6 +76,7 @@ const es: Messages = {
   pause: "Pausa",
   fps: "fps",
   language: "Idioma",
+  overlay: "Sobrecapa",
   dropHint: "Arrastra un archivo DICOM aquí, o usa loadFiles().",
   loading: "Cargando…",
 };

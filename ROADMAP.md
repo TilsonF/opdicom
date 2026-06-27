@@ -46,6 +46,13 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ⬜ Segmentation overlays
 - ⬜ WebGPU rendering path
 
+## v0.3.x — Viewer parity (dwv-inspired) 🚧
+- ✅ Corner metadata overlays (patient/study/series) + W/L + zoom + slice
+- ✅ Cursor readout: image (i,j), pixel value, world position (mm)
+- ⬜ Colormaps (pseudo-color) + smoothing toggle
+- ⬜ Drawing / segmentation tools (freehand, brush, floodfill, livewire)
+- ⬜ MPR / multi-view layout
+
 ## Cross-cutting (ongoing)
 - ✅ i18n (en/es) for the Web Component UI + in-toolbar language selector
 - ⬜ Theming presets (light/dark/high-contrast) + docs for CSS custom props

@@ -71,6 +71,20 @@ test("exports the view as a PNG download", async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/\.png$/);
 });
 
+test("shows the metadata + cursor overlay", async ({ page }) => {
+  await loadSyntheticDicom(page);
+  const overlay = page.locator("opdicom-viewer .overlay");
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText("E2E^TEST"); // patient name
+  await expect(overlay).toContainText("W/L:");
+
+  // Hovering the image populates the position/value readout.
+  const canvas = page.locator("opdicom-viewer canvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await expect(overlay).toContainText("mm");
+});
+
 test("downloads the original DICOM", async ({ page }) => {
   await loadSyntheticDicom(page);
   const dicomBtn = page.getByRole("button", { name: "DICOM" });
