@@ -18,6 +18,11 @@ export type MessageKey =
   | "rectangleRoi"
   | "ellipticalRoi"
   | "probe"
+  | "freehand"
+  | "arrow"
+  | "circleRoi"
+  | "bidirectional"
+  | "cobbAngle"
   | "preset"
   | "clear"
   | "reset"
@@ -45,6 +50,11 @@ const en: Messages = {
   rectangleRoi: "Rect ROI",
   ellipticalRoi: "Ellipse ROI",
   probe: "Probe",
+  freehand: "Freehand",
+  arrow: "Arrow",
+  circleRoi: "Circle ROI",
+  bidirectional: "Bidirectional",
+  cobbAngle: "Cobb Angle",
   preset: "Preset…",
   clear: "Clear",
   reset: "Reset",
@@ -71,6 +81,11 @@ const es: Messages = {
   rectangleRoi: "ROI rect.",
   ellipticalRoi: "ROI elipse",
   probe: "Sonda",
+  freehand: "Mano alzada",
+  arrow: "Flecha",
+  circleRoi: "ROI círculo",
+  bidirectional: "Bidireccional",
+  cobbAngle: "Ángulo Cobb",
   preset: "Preajuste…",
   clear: "Limpiar",
   reset: "Restablecer",

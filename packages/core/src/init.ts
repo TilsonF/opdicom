@@ -8,9 +8,14 @@ import {
   init as toolsInit,
   addTool,
   AngleTool,
+  ArrowAnnotateTool,
+  BidirectionalTool,
+  CircleROITool,
+  CobbAngleTool,
   EllipticalROITool,
   LengthTool,
   PanTool,
+  PlanarFreehandROITool,
   ProbeTool,
   RectangleROITool,
   StackScrollTool,
@@ -48,6 +53,13 @@ export function ensureInitialized(): Promise<void> {
       addTool(RectangleROITool);
       addTool(EllipticalROITool);
       addTool(ProbeTool);
+
+      // Drawing / freehand annotation tools.
+      addTool(PlanarFreehandROITool);
+      addTool(ArrowAnnotateTool);
+      addTool(CircleROITool);
+      addTool(BidirectionalTool);
+      addTool(CobbAngleTool);
 
       // The default colormap registry is empty in v5; register our built-ins.
       for (const cmap of BUILTIN_COLORMAPS) {

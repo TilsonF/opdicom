@@ -85,6 +85,13 @@ test("shows the metadata + cursor overlay", async ({ page }) => {
   await expect(overlay).toContainText("mm");
 });
 
+test("activates a drawing tool", async ({ page }) => {
+  await loadSyntheticDicom(page);
+  const freehand = page.getByRole("button", { name: "Freehand" });
+  await freehand.click();
+  await expect(freehand).toHaveAttribute("aria-pressed", "true");
+});
+
 test("applies a colormap without crashing the render", async ({ page }) => {
   await loadSyntheticDicom(page);
   const cmSelect = page

@@ -50,7 +50,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Corner metadata overlays (patient/study/series) + W/L + zoom + slice
 - ✅ Cursor readout: image (i,j), pixel value, world position (mm)
 - ✅ Colormaps (pseudo-color: Hot/Jet/Cool-to-Warm/Rainbow) + smoothing toggle
-- ⬜ Drawing / segmentation tools (freehand, brush, floodfill, livewire)
+- ✅ Drawing tools (freehand, arrow, circle ROI, bidirectional, Cobb angle)
+- ⬜ Segmentation (labelmap: brush, floodfill, livewire) — needs labelmap infra
 - ⬜ MPR / multi-view layout
 
 ## Cross-cutting (ongoing)
