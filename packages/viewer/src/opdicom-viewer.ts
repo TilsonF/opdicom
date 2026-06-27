@@ -4,6 +4,7 @@ import {
   MEASUREMENT_TOOLS,
   OpDicomEngine,
   WINDOW_PRESETS,
+  pickColormaps,
   type DicomMetadata,
   type LoadResult,
   type OpDicomTool,
@@ -211,6 +212,8 @@ export class OpdicomViewer extends LitElement {
   @state() private canSaveDicom = false;
   @state() private fps = DEFAULT_FPS;
   @state() private showOverlay = true;
+  @state() private smoothing = true;
+  @state() private colormaps: string[] = [];
   @state() private wl?: { center: number; width: number };
   @state() private zoom = 1;
   @state() private cursor?: ProbeResult;
@@ -254,6 +257,7 @@ export class OpdicomViewer extends LitElement {
         },
       });
       await this.engine.init();
+      this.colormaps = pickColormaps(this.engine.getColormapNames());
     } catch (error) {
       this.engine = undefined;
       this.emitError(error);
@@ -308,6 +312,15 @@ export class OpdicomViewer extends LitElement {
 
   clearMeasurements(): void {
     this.engine?.clearMeasurements();
+  }
+
+  applyColormap(name: string): void {
+    if (name) this.engine?.setColormap(name);
+  }
+
+  toggleSmoothing(): void {
+    this.smoothing = !this.smoothing;
+    this.engine?.setSmoothing(this.smoothing);
   }
 
   nextSlice(): void {
@@ -508,6 +521,26 @@ export class OpdicomViewer extends LitElement {
             (name) => html`<option value=${name}>${name}</option>`,
           )}
         </select>
+        <select
+          ?hidden=${this.colormaps.length === 0}
+          @change=${(e: Event) => {
+            const sel = e.target as HTMLSelectElement;
+            this.applyColormap(sel.value);
+            sel.selectedIndex = 0;
+          }}
+          title=${tr("colormap")}
+        >
+          <option value="">${tr("colormap")}</option>
+          ${this.colormaps.map((name) => html`<option value=${name}>${name}</option>`)}
+        </select>
+        <button
+          type="button"
+          aria-pressed=${this.smoothing}
+          @click=${() => this.toggleSmoothing()}
+          title=${tr("smoothing")}
+        >
+          ${tr("smoothing")}
+        </button>
         <button type="button" @click=${() => this.clearMeasurements()} title=${tr("clear")}>
           ${tr("clear")}
         </button>

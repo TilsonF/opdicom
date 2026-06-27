@@ -2,6 +2,7 @@ import {
   Enums,
   RenderingEngine,
   eventTarget,
+  utilities as csUtilities,
   type Types,
 } from "@cornerstonejs/core";
 import { wadors, wadouri } from "@cornerstonejs/dicom-image-loader";
@@ -400,6 +401,35 @@ export class OpDicomEngine {
     const viewport = this.getViewport();
     if (!viewport) return;
     viewport.setProperties({ invert });
+    viewport.render();
+  }
+
+  /** Names of the colormaps registered with Cornerstone (e.g. "Hot", "Jet"). */
+  getColormapNames(): string[] {
+    try {
+      return (csUtilities.colormap.getColormapNames() as string[]) ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Apply a colormap by name (pseudo-color). */
+  setColormap(name: string): void {
+    const viewport = this.getViewport();
+    if (!viewport) return;
+    viewport.setProperties({ colormap: { name } });
+    viewport.render();
+  }
+
+  /** Toggle pixel smoothing (LINEAR) vs pixelated (NEAREST) interpolation. */
+  setSmoothing(smooth: boolean): void {
+    const viewport = this.getViewport();
+    if (!viewport) return;
+    viewport.setProperties({
+      interpolationType: smooth
+        ? Enums.InterpolationType.LINEAR
+        : Enums.InterpolationType.NEAREST,
+    });
     viewport.render();
   }
 

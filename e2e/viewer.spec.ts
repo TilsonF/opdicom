@@ -85,6 +85,24 @@ test("shows the metadata + cursor overlay", async ({ page }) => {
   await expect(overlay).toContainText("mm");
 });
 
+test("applies a colormap without crashing the render", async ({ page }) => {
+  await loadSyntheticDicom(page);
+  const cmSelect = page
+    .locator("opdicom-viewer select")
+    .filter({ has: page.getByRole("option", { name: "Hot" }) });
+  await expect(cmSelect).toBeVisible();
+  await cmSelect.selectOption("Hot");
+  await expect(page.locator("opdicom-viewer canvas")).toBeVisible();
+});
+
+test("toggles smoothing", async ({ page }) => {
+  await loadSyntheticDicom(page);
+  const smooth = page.getByRole("button", { name: "Smooth" });
+  await expect(smooth).toHaveAttribute("aria-pressed", "true");
+  await smooth.click();
+  await expect(smooth).toHaveAttribute("aria-pressed", "false");
+});
+
 test("downloads the original DICOM", async ({ page }) => {
   await loadSyntheticDicom(page);
   const dicomBtn = page.getByRole("button", { name: "DICOM" });

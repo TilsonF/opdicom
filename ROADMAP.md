@@ -49,7 +49,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 ## v0.3.x — Viewer parity (dwv-inspired) 🚧
 - ✅ Corner metadata overlays (patient/study/series) + W/L + zoom + slice
 - ✅ Cursor readout: image (i,j), pixel value, world position (mm)
-- ⬜ Colormaps (pseudo-color) + smoothing toggle
+- ✅ Colormaps (pseudo-color: Hot/Jet/Cool-to-Warm/Rainbow) + smoothing toggle
 - ⬜ Drawing / segmentation tools (freehand, brush, floodfill, livewire)
 - ⬜ MPR / multi-view layout
 

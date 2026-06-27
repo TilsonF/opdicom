@@ -1,4 +1,8 @@
-import { init as coreInit } from "@cornerstonejs/core";
+import {
+  init as coreInit,
+  utilities as csUtilities,
+} from "@cornerstonejs/core";
+import { BUILTIN_COLORMAPS } from "./colormaps.js";
 import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader";
 import {
   init as toolsInit,
@@ -44,6 +48,15 @@ export function ensureInitialized(): Promise<void> {
       addTool(RectangleROITool);
       addTool(EllipticalROITool);
       addTool(ProbeTool);
+
+      // The default colormap registry is empty in v5; register our built-ins.
+      for (const cmap of BUILTIN_COLORMAPS) {
+        try {
+          csUtilities.colormap.registerColormap(cmap);
+        } catch {
+          /* ignore duplicate / unsupported registrations */
+        }
+      }
     })();
   }
   return initPromise;
