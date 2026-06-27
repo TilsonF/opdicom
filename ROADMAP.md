@@ -51,10 +51,11 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Cursor readout: image (i,j), pixel value, world position (mm)
 - ✅ Colormaps (pseudo-color: Hot/Jet/Cool-to-Warm/Rainbow) + smoothing toggle
 - ✅ Drawing tools (freehand, arrow, circle ROI, bidirectional, Cobb angle)
-- ✅ Multi-view layout (1x1 / 2x1 / 1x2) with zoom/pan/VOI/scroll sync
+- ✅ Multi-view layout (1x1 / 2x1 / 1x2 / 2x2) with zoom/pan/VOI/scroll sync —
+  all cells share one RenderingEngine (no context-pool exhaustion)
 - ⬜ Segmentation (labelmap: brush, floodfill, livewire) — needs labelmap infra
-- ⬜ 2x2+ grids & true MPR — need a single RenderingEngine / multi-viewport
-  refactor (4 separate engines exhaust the WebGL context pool)
+- ⬜ True MPR (axial/sagittal/coronal reslice) — needs volume viewports; the
+  shared-engine/multi-viewport groundwork is now in place
 
 ## Cross-cutting (ongoing)
 - ✅ i18n (en/es) for the Web Component UI + in-toolbar language selector

@@ -64,6 +64,13 @@ export interface OpDicomEngineOptions {
   background?: Types.Point3;
   /** Notified whenever the displayed slice changes (scroll, keyboard, API). */
   onImageChange?: (index: number, count: number) => void;
+  /**
+   * Share an existing RenderingEngine instead of creating one. Multiple cells
+   * in a grid MUST share a single engine — separate engines each grab WebGL
+   * contexts and exhaust the shared pool. When shared, this engine disables
+   * only its own viewport on destroy (it doesn't own the engine).
+   */
+  renderingEngine?: RenderingEngine;
 }
 
 export interface LoadResult {
@@ -115,6 +122,8 @@ export class OpDicomEngine {
   private readonly background: Types.Point3;
   private readonly onImageChange?: (index: number, count: number) => void;
 
+  private readonly renderingEngineId: string;
+  private readonly sharedEngine?: RenderingEngine;
   private renderingEngine?: RenderingEngine;
   private destroyed = false;
   private playing = false;
@@ -136,11 +145,15 @@ export class OpDicomEngine {
     this.id = base;
     this.viewportId = `${base}-viewport`;
     this.toolGroupId = `${base}-toolgroup`;
+    this.sharedEngine = options.renderingEngine;
+    // All cells sharing an engine report the same renderingEngineId (required
+    // by synchronizers) but keep distinct viewportIds.
+    this.renderingEngineId = this.sharedEngine?.id ?? this.id;
   }
 
   /** Identifiers for wiring this viewport into a Cornerstone synchronizer. */
   get viewportRef(): { renderingEngineId: string; viewportId: string } {
-    return { renderingEngineId: this.id, viewportId: this.viewportId };
+    return { renderingEngineId: this.renderingEngineId, viewportId: this.viewportId };
   }
 
   /** Boot Cornerstone3D and enable this engine's stack viewport. */
@@ -148,7 +161,7 @@ export class OpDicomEngine {
     await ensureInitialized();
     if (this.destroyed) return;
 
-    const renderingEngine = new RenderingEngine(this.id);
+    const renderingEngine = this.sharedEngine ?? new RenderingEngine(this.id);
     this.renderingEngine = renderingEngine;
 
     renderingEngine.enableElement({
@@ -175,7 +188,7 @@ export class OpDicomEngine {
     for (const tool of TOOLS) {
       toolGroup.addTool(tool.cornerstoneName);
     }
-    toolGroup.addViewport(this.viewportId, this.id);
+    toolGroup.addViewport(this.viewportId, this.renderingEngineId);
 
     // Default: left = window/level. Secondary bindings stay constant so the
     // user can always pan/zoom/scroll regardless of the active primary tool.
@@ -541,7 +554,16 @@ export class OpDicomEngine {
     );
     const toolGroup = ToolGroupManager.getToolGroup(this.toolGroupId);
     if (toolGroup) ToolGroupManager.destroyToolGroup(this.toolGroupId);
-    this.renderingEngine?.destroy();
+    if (this.sharedEngine) {
+      // Don't tear down a shared engine — just remove this viewport from it.
+      try {
+        this.sharedEngine.disableElement(this.viewportId);
+      } catch {
+        /* already gone */
+      }
+    } else {
+      this.renderingEngine?.destroy();
+    }
     this.renderingEngine = undefined;
   }
 }

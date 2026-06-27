@@ -85,13 +85,13 @@ test("shows the metadata + cursor overlay", async ({ page }) => {
   await expect(overlay).toContainText("mm");
 });
 
-test("splits into a 2x1 grid of synced viewports", async ({ page }) => {
+test("splits into a 2x2 grid sharing one rendering engine", async ({ page }) => {
   await loadSyntheticDicom(page);
   await expect(page.locator("opdicom-viewer canvas")).toHaveCount(1);
   await page.evaluate(() => {
-    (document.querySelector("opdicom-viewer") as HTMLElement & { layout: string }).layout = "2x1";
+    (document.querySelector("opdicom-viewer") as HTMLElement & { layout: string }).layout = "2x2";
   });
-  await expect(page.locator("opdicom-viewer canvas")).toHaveCount(2);
+  await expect(page.locator("opdicom-viewer canvas")).toHaveCount(4);
 });
 
 test("activates a drawing tool", async ({ page }) => {
