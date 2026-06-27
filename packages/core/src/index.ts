@@ -13,6 +13,8 @@ export {
 export type { ImageGeometry, Vec3 } from "./geometry.js";
 export { ensureInitialized } from "./init.js";
 export { createViewportSync } from "./sync.js";
+export { createSharedRenderingEngine } from "./render-engine.js";
+export type { SharedRenderingEngine } from "./render-engine.js";
 export {
   TOOLS,
   MANIPULATION_TOOLS,

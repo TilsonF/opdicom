@@ -3,12 +3,10 @@
 export type LayoutName = "1x1" | "2x1" | "1x2" | "2x2";
 
 /**
- * Layouts offered in the UI. 2x2+ is intentionally excluded: each cell is its
- * own Cornerstone RenderingEngine, and four exhaust the shared WebGL context
- * pool in software renderers. Larger grids need a single-engine/multi-viewport
- * refactor (tracked with MPR). "2x2" stays a valid LayoutName for that future.
+ * Layouts offered in the UI. All cells share one RenderingEngine, so 2x2 works
+ * without exhausting the WebGL context pool.
  */
-export const LAYOUTS: readonly LayoutName[] = ["1x1", "2x1", "1x2"];
+export const LAYOUTS: readonly LayoutName[] = ["1x1", "2x1", "1x2", "2x2"];
 
 export interface LayoutDims {
   cols: number;

@@ -5,12 +5,14 @@ import {
   MEASUREMENT_TOOLS,
   OpDicomEngine,
   WINDOW_PRESETS,
+  createSharedRenderingEngine,
   createViewportSync,
   layoutDims,
   pickColormaps,
   LAYOUTS,
   type DicomMetadata,
   type LayoutName,
+  type SharedRenderingEngine,
   type LoadResult,
   type OpDicomTool,
   type ProbeResult,
@@ -248,6 +250,7 @@ export class OpdicomViewer extends LitElement {
   @queryAll(".viewport") private viewportEls!: NodeListOf<HTMLDivElement>;
 
   private engines: OpDicomEngine[] = [];
+  private sharedEngine?: SharedRenderingEngine;
   private activeIndex = 0;
   private teardownSync?: () => void;
   private lastFiles?: Blob[];
@@ -282,6 +285,8 @@ export class OpdicomViewer extends LitElement {
     this.teardownSync = undefined;
     this.engines.forEach((e) => e.destroy());
     this.engines = [];
+    this.sharedEngine?.destroy();
+    this.sharedEngine = undefined;
   }
 
   /** (Re)create one engine per grid cell and re-load the current stack. */
@@ -290,9 +295,14 @@ export class OpdicomViewer extends LitElement {
     await this.updateComplete; // ensure the new grid cells exist in the DOM
     try {
       const cells = Array.from(this.viewportEls);
+      // One shared RenderingEngine for all cells (avoids exhausting the WebGL
+      // context pool, which would blank cells in a 2x2+ grid).
+      const shared = await createSharedRenderingEngine();
+      this.sharedEngine = shared;
       const engines: OpDicomEngine[] = [];
       for (let i = 0; i < cells.length; i++) {
         const engine = new OpDicomEngine(cells[i]!, {
+          renderingEngine: shared,
           onImageChange: (index, count) => {
             if (this.engines[this.activeIndex] !== engine) return;
             this.sliceIndex = index;
