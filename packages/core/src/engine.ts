@@ -138,6 +138,11 @@ export class OpDicomEngine {
     this.toolGroupId = `${base}-toolgroup`;
   }
 
+  /** Identifiers for wiring this viewport into a Cornerstone synchronizer. */
+  get viewportRef(): { renderingEngineId: string; viewportId: string } {
+    return { renderingEngineId: this.id, viewportId: this.viewportId };
+  }
+
   /** Boot Cornerstone3D and enable this engine's stack viewport. */
   async init(): Promise<void> {
     await ensureInitialized();

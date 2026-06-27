@@ -12,6 +12,7 @@ export {
 } from "./geometry.js";
 export type { ImageGeometry, Vec3 } from "./geometry.js";
 export { ensureInitialized } from "./init.js";
+export { createViewportSync } from "./sync.js";
 export {
   TOOLS,
   MANIPULATION_TOOLS,
@@ -32,6 +33,8 @@ export {
 export type { ColormapDef } from "./colormaps.js";
 export { voiFromWindowLevel, windowLevelFromVoi } from "./voi.js";
 export type { VoiRange } from "./voi.js";
+export { LAYOUTS, layoutDims, resolveLayout } from "./layout.js";
+export type { LayoutName, LayoutDims } from "./layout.js";
 export {
   normalizeCineOptions,
   DEFAULT_FPS,

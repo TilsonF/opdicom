@@ -5,15 +5,19 @@ import {
   MEASUREMENT_TOOLS,
   OpDicomEngine,
   WINDOW_PRESETS,
+  createViewportSync,
+  layoutDims,
   pickColormaps,
+  LAYOUTS,
   type DicomMetadata,
+  type LayoutName,
   type LoadResult,
   type OpDicomTool,
   type ProbeResult,
   type ToolDescriptor,
 } from "@opdicom/core";
 import { LitElement, css, html, type PropertyValues } from "lit";
-import { customElement, property, query, state } from "lit/decorators.js";
+import { customElement, property, queryAll, state } from "lit/decorators.js";
 import { LANGS, resolveLang, t, type Lang, type MessageKey } from "./i18n.js";
 
 /**
@@ -190,6 +194,23 @@ export class OpdicomViewer extends LitElement {
       right: 0;
       text-align: right;
     }
+    .grid {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      gap: 2px;
+      background: var(--opdicom-border, #2a2f37);
+    }
+    .cell {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      background: var(--opdicom-bg, #000);
+    }
+    .cell.active {
+      outline: 1px solid var(--opdicom-accent, #2f6df6);
+      outline-offset: -1px;
+    }
   `;
 
   /** Hide the built-in toolbar (use your own UI via the public methods). */
@@ -203,6 +224,9 @@ export class OpdicomViewer extends LitElement {
   locale: Lang = resolveLang(
     typeof navigator !== "undefined" ? navigator.language : "en",
   );
+
+  /** Grid layout: "1x1" | "2x1" | "1x2" | "2x2". */
+  @property({ reflect: true }) layout: LayoutName = "1x1";
 
   @state() private activeTool: OpDicomTool = "windowLevel";
   @state() private hasImage = false;
@@ -221,58 +245,112 @@ export class OpdicomViewer extends LitElement {
   /** Dynamic status (loading/error); empty shows the localized drop hint. */
   @state() private status = "";
 
-  @query(".viewport") private viewportEl!: HTMLDivElement;
+  @queryAll(".viewport") private viewportEls!: NodeListOf<HTMLDivElement>;
 
-  private engine?: OpDicomEngine;
+  private engines: OpDicomEngine[] = [];
+  private activeIndex = 0;
+  private teardownSync?: () => void;
+  private lastFiles?: Blob[];
   private resizeObserver?: ResizeObserver;
   /** Latest parsed metadata, exposed for host apps. */
   metadata: DicomMetadata[] = [];
 
+  /** The cell the toolbar / overlay / cine act on. */
+  private get engine(): OpDicomEngine | undefined {
+    return this.engines[this.activeIndex];
+  }
+
   override firstUpdated(_changed: PropertyValues): void {
-    void this.bootstrap();
-    this.resizeObserver = new ResizeObserver(() => this.engine?.resize());
-    this.resizeObserver.observe(this);
+    this.resizeObserver = new ResizeObserver(() =>
+      this.engines.forEach((e) => e.resize()),
+    );
+    void this.rebuild();
+  }
+
+  override updated(changed: PropertyValues): void {
+    if (changed.has("layout") && this.engines.length) void this.rebuild();
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.resizeObserver?.disconnect();
-    this.engine?.destroy();
-    this.engine = undefined;
+    this.teardown();
   }
 
-  private async bootstrap(): Promise<void> {
-    if (this.engine) return;
+  private teardown(): void {
+    this.teardownSync?.();
+    this.teardownSync = undefined;
+    this.engines.forEach((e) => e.destroy());
+    this.engines = [];
+  }
+
+  /** (Re)create one engine per grid cell and re-load the current stack. */
+  private async rebuild(): Promise<void> {
+    this.teardown();
+    await this.updateComplete; // ensure the new grid cells exist in the DOM
     try {
-      this.engine = new OpDicomEngine(this.viewportEl, {
-        onImageChange: (index, count) => {
-          this.sliceIndex = index;
-          this.sliceCount = count;
-          this.dispatchEvent(
-            new CustomEvent("opdicom-slice", {
-              detail: { index, count },
-              bubbles: true,
-              composed: true,
-            }),
-          );
-        },
-      });
-      await this.engine.init();
-      this.colormaps = pickColormaps(this.engine.getColormapNames());
+      const cells = Array.from(this.viewportEls);
+      const engines: OpDicomEngine[] = [];
+      for (let i = 0; i < cells.length; i++) {
+        const engine = new OpDicomEngine(cells[i]!, {
+          onImageChange: (index, count) => {
+            if (this.engines[this.activeIndex] !== engine) return;
+            this.sliceIndex = index;
+            this.sliceCount = count;
+            this.dispatchEvent(
+              new CustomEvent("opdicom-slice", {
+                detail: { index, count },
+                bubbles: true,
+                composed: true,
+              }),
+            );
+          },
+        });
+        await engine.init();
+        engines.push(engine);
+      }
+      this.engines = engines;
+      this.activeIndex = Math.min(this.activeIndex, engines.length - 1);
+      this.colormaps = pickColormaps(engines[0]?.getColormapNames() ?? []);
+      this.teardownSync = createViewportSync(engines);
+
+      // Observe each cell so Cornerstone re-fits when the grid lays out (the
+      // host size is unchanged on a layout switch, so observing the host alone
+      // would leave new cells with a stale/zero canvas size — and blank).
+      this.resizeObserver?.disconnect();
+      Array.from(cells).forEach((el) => this.resizeObserver?.observe(el));
+
+      if (this.lastFiles) await this.loadIntoAll(this.lastFiles);
+      requestAnimationFrame(() => this.engines.forEach((e) => e.resize()));
     } catch (error) {
-      this.engine = undefined;
       this.emitError(error);
     }
+  }
+
+  private async ensureReady(): Promise<void> {
+    if (!this.engines.length) await this.rebuild();
+  }
+
+  /** Load the same stack into every grid cell. */
+  private async loadIntoAll(
+    files: ArrayLike<Blob>,
+  ): Promise<LoadResult | undefined> {
+    const results = await Promise.all(
+      this.engines.map((e) => e.loadFiles(files)),
+    );
+    return results[0];
   }
 
   // ---- public API ----------------------------------------------------------
 
   /** Load DICOM File/Blob objects (e.g. from an <input> or drag & drop). */
   async loadFiles(files: ArrayLike<Blob>): Promise<LoadResult | undefined> {
-    await this.bootstrap();
+    await this.ensureReady();
     try {
       this.status = t(this.locale, "loading");
-      const result = await this.engine!.loadFiles(files);
+      this.lastFiles = Array.from(files);
+      const result = await this.loadIntoAll(files);
+      if (!result) return undefined;
       this.metadata = result.metadata;
       this.hasImage = result.imageIds.length > 0;
       this.isPlaying = false;
@@ -292,9 +370,9 @@ export class OpdicomViewer extends LitElement {
 
   /** Load Cornerstone imageIds directly (wadouri / wadors / dicomweb). */
   async loadImageIds(imageIds: string[]): Promise<void> {
-    await this.bootstrap();
+    await this.ensureReady();
     try {
-      await this.engine!.loadImageIds(imageIds);
+      await Promise.all(this.engines.map((e) => e.loadImageIds(imageIds)));
       this.hasImage = imageIds.length > 0;
     } catch (error) {
       this.emitError(error);
@@ -303,25 +381,25 @@ export class OpdicomViewer extends LitElement {
 
   setPrimaryTool(tool: OpDicomTool): void {
     this.activeTool = tool;
-    this.engine?.setPrimaryTool(tool);
+    this.engines.forEach((e) => e.setPrimaryTool(tool));
   }
 
   applyPreset(name: string): void {
     const preset = WINDOW_PRESETS[name];
-    if (preset) this.engine?.setWindowLevel(preset.center, preset.width);
+    if (preset) this.engines.forEach((e) => e.setWindowLevel(preset.center, preset.width));
   }
 
   clearMeasurements(): void {
-    this.engine?.clearMeasurements();
+    this.engines.forEach((e) => e.clearMeasurements());
   }
 
   applyColormap(name: string): void {
-    if (name) this.engine?.setColormap(name);
+    if (name) this.engines.forEach((e) => e.setColormap(name));
   }
 
   toggleSmoothing(): void {
     this.smoothing = !this.smoothing;
-    this.engine?.setSmoothing(this.smoothing);
+    this.engines.forEach((e) => e.setSmoothing(this.smoothing));
   }
 
   nextSlice(): void {
@@ -366,14 +444,14 @@ export class OpdicomViewer extends LitElement {
   }
 
   reset(): void {
-    this.engine?.reset();
+    this.engines.forEach((e) => e.reset());
   }
 
   // ---- internals -----------------------------------------------------------
 
   private applyFirstPreset(): void {
     const wl = this.metadata[0]?.image.windowLevels[0];
-    if (wl) this.engine?.setWindowLevel(wl.center, wl.width);
+    if (wl) this.engines.forEach((e) => e.setWindowLevel(wl.center, wl.width));
   }
 
   private emitError(error: unknown): void {
@@ -405,20 +483,23 @@ export class OpdicomViewer extends LitElement {
 
   private rafPending = false;
   private lastMove?: [number, number];
-  private onMouseMove = (e: MouseEvent): void => {
-    if (!this.engine || !this.hasImage) return;
-    const rect = this.viewportEl.getBoundingClientRect();
+  private onCellMove(e: MouseEvent, index: number): void {
+    const el = this.viewportEls[index];
+    if (!this.engines[index] || !this.hasImage || !el) return;
+    this.activeIndex = index;
+    const rect = el.getBoundingClientRect();
     this.lastMove = [e.clientX - rect.left, e.clientY - rect.top];
     if (this.rafPending) return;
     this.rafPending = true;
     requestAnimationFrame(() => {
       this.rafPending = false;
-      if (!this.engine || !this.lastMove) return;
-      this.cursor = this.engine.probeAtCanvas(this.lastMove);
-      this.wl = this.engine.getDisplayWindowLevel();
-      this.zoom = this.engine.getZoomFactor();
+      const engine = this.engines[this.activeIndex];
+      if (!engine || !this.lastMove) return;
+      this.cursor = engine.probeAtCanvas(this.lastMove);
+      this.wl = engine.getDisplayWindowLevel();
+      this.zoom = engine.getZoomFactor();
     });
-  };
+  }
 
   private onMouseLeave = (): void => {
     this.cursor = undefined;
@@ -502,6 +583,7 @@ export class OpdicomViewer extends LitElement {
 
   override render() {
     const tr = (k: MessageKey) => t(this.locale, k);
+    const dims = layoutDims(this.layout);
     return html`
       <div class=${`toolbar ${this.noToolbar ? "hidden" : ""}`} part="toolbar">
         <div class="group">
@@ -604,6 +686,15 @@ export class OpdicomViewer extends LitElement {
         </span>
         <select
           class="lang"
+          title="Layout"
+          .value=${this.layout}
+          @change=${(e: Event) =>
+            (this.layout = (e.target as HTMLSelectElement).value as LayoutName)}
+        >
+          ${LAYOUTS.map((l) => html`<option value=${l}>${l}</option>`)}
+        </select>
+        <select
+          class="lang"
           title=${tr("language")}
           .value=${this.locale}
           @change=${(e: Event) =>
@@ -618,14 +709,29 @@ export class OpdicomViewer extends LitElement {
         class="stage"
         tabindex="0"
         @keydown=${this.onKeyDown}
-        @mousemove=${this.onMouseMove}
         @mouseleave=${this.onMouseLeave}
         @drop=${this.noDnd ? null : this.onDrop}
         @dragover=${this.noDnd ? null : this.onDragOver}
         @dragleave=${this.noDnd ? null : this.onDragLeave}
       >
-        <div class="viewport" part="viewport"></div>
-        ${this.overlayLayer()}
+        <div
+          class="grid"
+          style=${`grid-template-columns: repeat(${dims.cols}, 1fr); grid-template-rows: repeat(${dims.rows}, 1fr);`}
+        >
+          ${Array.from(
+            { length: dims.cells },
+            (_unused, i) => html`
+              <div
+                class=${`cell ${i === this.activeIndex && dims.cells > 1 ? "active" : ""}`}
+                @mousemove=${(e: MouseEvent) => this.onCellMove(e, i)}
+                @mousedown=${() => (this.activeIndex = i)}
+              >
+                <div class="viewport" part="viewport"></div>
+                ${i === this.activeIndex ? this.overlayLayer() : null}
+              </div>
+            `,
+          )}
+        </div>
         <div
           class=${`dropzone ${this.dragover ? "dragover" : ""} ${this.hasImage ? "hidden" : ""}`}
         >
