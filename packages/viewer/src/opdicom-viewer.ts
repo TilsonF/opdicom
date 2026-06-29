@@ -4,9 +4,12 @@ import {
   MANIPULATION_TOOLS,
   MEASUREMENT_TOOLS,
   OpDicomEngine,
+  OpDicomMpr,
   WINDOW_PRESETS,
   createSharedRenderingEngine,
   createViewportSync,
+  filesToImageIds,
+  getColormapNames,
   layoutDims,
   pickColormaps,
   LAYOUTS,
@@ -250,8 +253,13 @@ export class OpdicomViewer extends LitElement {
   @queryAll(".viewport") private viewportEls!: NodeListOf<HTMLDivElement>;
 
   private engines: OpDicomEngine[] = [];
+  private mpr?: OpDicomMpr;
   private sharedEngine?: SharedRenderingEngine;
   private activeIndex = 0;
+
+  private get isMpr(): boolean {
+    return this.layout === "mpr";
+  }
   private teardownSync?: () => void;
   private lastFiles?: Blob[];
   private resizeObserver?: ResizeObserver;
@@ -264,9 +272,10 @@ export class OpdicomViewer extends LitElement {
   }
 
   override firstUpdated(_changed: PropertyValues): void {
-    this.resizeObserver = new ResizeObserver(() =>
-      this.engines.forEach((e) => e.resize()),
-    );
+    this.resizeObserver = new ResizeObserver(() => {
+      this.engines.forEach((e) => e.resize());
+      this.mpr?.resize();
+    });
     void this.rebuild();
   }
 
@@ -285,11 +294,13 @@ export class OpdicomViewer extends LitElement {
     this.teardownSync = undefined;
     this.engines.forEach((e) => e.destroy());
     this.engines = [];
+    this.mpr?.destroy();
+    this.mpr = undefined;
     this.sharedEngine?.destroy();
     this.sharedEngine = undefined;
   }
 
-  /** (Re)create one engine per grid cell and re-load the current stack. */
+  /** (Re)create the engines/MPR for the current layout and re-load the stack. */
   private async rebuild(): Promise<void> {
     this.teardown();
     await this.updateComplete; // ensure the new grid cells exist in the DOM
@@ -299,6 +310,17 @@ export class OpdicomViewer extends LitElement {
       // context pool, which would blank cells in a 2x2+ grid).
       const shared = await createSharedRenderingEngine();
       this.sharedEngine = shared;
+      this.colormaps = pickColormaps(getColormapNames());
+
+      if (this.isMpr) {
+        this.mpr = new OpDicomMpr(cells, { renderingEngine: shared });
+        this.resizeObserver?.disconnect();
+        cells.forEach((el) => this.resizeObserver?.observe(el));
+        if (this.lastFiles) await this.loadMpr(this.lastFiles);
+        requestAnimationFrame(() => this.mpr?.resize());
+        return;
+      }
+
       const engines: OpDicomEngine[] = [];
       for (let i = 0; i < cells.length; i++) {
         const engine = new OpDicomEngine(cells[i]!, {
@@ -338,7 +360,8 @@ export class OpdicomViewer extends LitElement {
   }
 
   private async ensureReady(): Promise<void> {
-    if (!this.engines.length) await this.rebuild();
+    const ready = this.isMpr ? this.mpr : this.engines.length;
+    if (!ready) await this.rebuild();
   }
 
   /** Load the same stack into every grid cell. */
@@ -351,6 +374,13 @@ export class OpdicomViewer extends LitElement {
     return results[0];
   }
 
+  /** Build a volume from the files and show the three MPR planes. */
+  private async loadMpr(files: ArrayLike<Blob>): Promise<LoadResult> {
+    const imageIds = filesToImageIds(files);
+    await this.mpr!.load(imageIds);
+    return { imageIds, metadata: [] };
+  }
+
   // ---- public API ----------------------------------------------------------
 
   /** Load DICOM File/Blob objects (e.g. from an <input> or drag & drop). */
@@ -359,7 +389,9 @@ export class OpdicomViewer extends LitElement {
     try {
       this.status = t(this.locale, "loading");
       this.lastFiles = Array.from(files);
-      const result = await this.loadIntoAll(files);
+      const result = this.isMpr
+        ? await this.loadMpr(files)
+        : await this.loadIntoAll(files);
       if (!result) return undefined;
       this.metadata = result.metadata;
       this.hasImage = result.imageIds.length > 0;
@@ -396,7 +428,12 @@ export class OpdicomViewer extends LitElement {
 
   applyPreset(name: string): void {
     const preset = WINDOW_PRESETS[name];
-    if (preset) this.engines.forEach((e) => e.setWindowLevel(preset.center, preset.width));
+    if (!preset) return;
+    if (this.isMpr) {
+      this.mpr?.setWindowLevel(preset.center, preset.width);
+      return;
+    }
+    this.engines.forEach((e) => e.setWindowLevel(preset.center, preset.width));
   }
 
   clearMeasurements(): void {
@@ -404,7 +441,12 @@ export class OpdicomViewer extends LitElement {
   }
 
   applyColormap(name: string): void {
-    if (name) this.engines.forEach((e) => e.setColormap(name));
+    if (!name) return;
+    if (this.isMpr) {
+      this.mpr?.setColormap(name);
+      return;
+    }
+    this.engines.forEach((e) => e.setColormap(name));
   }
 
   toggleSmoothing(): void {
@@ -454,6 +496,10 @@ export class OpdicomViewer extends LitElement {
   }
 
   reset(): void {
+    if (this.isMpr) {
+      this.mpr?.reset();
+      return;
+    }
     this.engines.forEach((e) => e.reset());
   }
 
@@ -554,7 +600,7 @@ export class OpdicomViewer extends LitElement {
   }
 
   private overlayLayer() {
-    if (!this.showOverlay || !this.hasImage) return null;
+    if (!this.showOverlay || !this.hasImage || this.isMpr) return null;
     const m = this.metadata[0];
     const f1 = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : "—");
     const lines = (...xs: (string | undefined)[]) =>

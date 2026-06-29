@@ -94,6 +94,11 @@ test("splits into a 2x2 grid sharing one rendering engine", async ({ page }) => 
   await expect(page.locator("opdicom-viewer canvas")).toHaveCount(4);
 });
 
+test("renders MPR — three orthogonal planes from a volume", async ({ page }) => {
+  await page.getByRole("button", { name: "Load 3D (MPR)" }).click();
+  await expect(page.locator("opdicom-viewer canvas")).toHaveCount(3);
+});
+
 test("activates a drawing tool", async ({ page }) => {
   await loadSyntheticDicom(page);
   const freehand = page.getByRole("button", { name: "Freehand" });

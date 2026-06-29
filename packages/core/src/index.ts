@@ -15,6 +15,10 @@ export { ensureInitialized } from "./init.js";
 export { createViewportSync } from "./sync.js";
 export { createSharedRenderingEngine } from "./render-engine.js";
 export type { SharedRenderingEngine } from "./render-engine.js";
+export { OpDicomMpr } from "./mpr.js";
+export type { OpDicomMprOptions } from "./mpr.js";
+export { filesToImageIds } from "./files.js";
+export { getColormapNames } from "./colormap-names.js";
 export {
   TOOLS,
   MANIPULATION_TOOLS,

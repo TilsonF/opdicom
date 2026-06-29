@@ -1,10 +1,11 @@
 import "@opdicom/viewer";
 import type { OpdicomViewer } from "@opdicom/viewer";
-import { makeSampleDicomFile } from "./sample-dicom.js";
+import { makeSampleDicomFile, makeVolumeSampleFiles } from "./sample-dicom.js";
 
 const viewer = document.getElementById("viewer") as OpdicomViewer;
 const fileInput = document.getElementById("file") as HTMLInputElement;
 const sampleBtn = document.getElementById("sample") as HTMLButtonElement;
+const sample3dBtn = document.getElementById("sample3d") as HTMLButtonElement;
 
 fileInput.addEventListener("change", () => {
   if (fileInput.files?.length) {
@@ -14,6 +15,11 @@ fileInput.addEventListener("change", () => {
 
 sampleBtn.addEventListener("click", () => {
   void viewer.loadFiles([makeSampleDicomFile()]);
+});
+
+sample3dBtn.addEventListener("click", () => {
+  viewer.layout = "mpr";
+  void viewer.loadFiles(makeVolumeSampleFiles());
 });
 
 viewer.addEventListener("opdicom-load", (e) => {

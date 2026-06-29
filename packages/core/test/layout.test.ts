@@ -15,9 +15,14 @@ describe("layoutDims", () => {
     }
   });
 
-  it("offers 2x2 (shared rendering engine makes it safe)", () => {
+  it("offers 2x2 and the MPR mode", () => {
     expect(LAYOUTS).toContain("2x2");
-    expect(LAYOUTS).toEqual(["1x1", "2x1", "1x2", "2x2"]);
+    expect(LAYOUTS).toContain("mpr");
+    expect(LAYOUTS).toEqual(["1x1", "2x1", "1x2", "2x2", "mpr"]);
+  });
+
+  it("maps the mpr mode to three cells", () => {
+    expect(layoutDims("mpr")).toEqual({ cols: 3, rows: 1, cells: 3 });
   });
 
   it("falls back to 1x1 for unknown names", () => {

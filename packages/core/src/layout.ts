@@ -1,12 +1,13 @@
 /** Viewer grid layouts (pure, dependency-free). */
 
-export type LayoutName = "1x1" | "2x1" | "1x2" | "2x2";
+export type LayoutName = "1x1" | "2x1" | "1x2" | "2x2" | "mpr";
 
 /**
  * Layouts offered in the UI. All cells share one RenderingEngine, so 2x2 works
- * without exhausting the WebGL context pool.
+ * without exhausting the WebGL context pool. "mpr" is a special 3-cell mode
+ * (axial/sagittal/coronal) backed by a volume rather than independent stacks.
  */
-export const LAYOUTS: readonly LayoutName[] = ["1x1", "2x1", "1x2", "2x2"];
+export const LAYOUTS: readonly LayoutName[] = ["1x1", "2x1", "1x2", "2x2", "mpr"];
 
 export interface LayoutDims {
   cols: number;
@@ -19,6 +20,7 @@ const TABLE: Record<LayoutName, LayoutDims> = {
   "2x1": { cols: 2, rows: 1, cells: 2 },
   "1x2": { cols: 1, rows: 2, cells: 2 },
   "2x2": { cols: 2, rows: 2, cells: 4 },
+  mpr: { cols: 3, rows: 1, cells: 3 },
 };
 
 /** Columns/rows/cell-count for a layout (falls back to 1x1 if unknown). */
