@@ -38,7 +38,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ `@opdicom/react` (typed props/events + ref handle)
 - ✅ `@opdicom/vue` (Vue 3 component)
 - ✅ Angular usage via `CUSTOM_ELEMENTS_SCHEMA` — see [docs/FRAMEWORKS.md](./docs/FRAMEWORKS.md)
-- ⬜ Live docs site + hosted demo (GitHub Pages)
+- ✅ Hosted demo on GitHub Pages (auto-deploy workflow)
+- ✅ npm release pipeline (Changesets) — see [docs/RELEASING.md](./docs/RELEASING.md)
 
 ## v0.5 — Advanced rendering
 - ⬜ MPR (multiplanar reconstruction)

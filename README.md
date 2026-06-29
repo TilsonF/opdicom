@@ -10,6 +10,8 @@ Built on [Cornerstone3D](https://www.cornerstonejs.org/) · TypeScript · Web Co
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
+**[▶ Live demo](https://tilsonf.github.io/opdicom/)** — click **Load sample** (2D) or **Load 3D (MPR)**.
+
 </div>
 
 > ⚠️ **Not a medical device.** OpDICOM is open-source software for research, education
@@ -85,6 +87,13 @@ export function Study({ files }: { files: File[] }) {
 - [ ] WebGPU rendering path
 
 See [the full design](./docs/ARCHITECTURE.md) (coming soon).
+
+## Documentation
+
+- [Framework usage (React / Vue / Angular)](./docs/FRAMEWORKS.md)
+- [Connectivity — devices, PACS & DICOMweb](./docs/CONNECTIVITY.md)
+- [Releasing & hosting](./docs/RELEASING.md)
+- [Roadmap](./ROADMAP.md) · [Security policy](./SECURITY.md)
 
 ## Contributing
 
