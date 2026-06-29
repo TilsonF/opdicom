@@ -53,9 +53,10 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ Drawing tools (freehand, arrow, circle ROI, bidirectional, Cobb angle)
 - ✅ Multi-view layout (1x1 / 2x1 / 1x2 / 2x2) with zoom/pan/VOI/scroll sync —
   all cells share one RenderingEngine (no context-pool exhaustion)
+- ✅ True MPR (axial/sagittal/coronal reslice) — volume viewports on the shared
+  engine; demo "Load 3D (MPR)" + synthetic 3D phantom
 - ⬜ Segmentation (labelmap: brush, floodfill, livewire) — needs labelmap infra
-- ⬜ True MPR (axial/sagittal/coronal reslice) — needs volume viewports; the
-  shared-engine/multi-viewport groundwork is now in place
+- ⬜ MPR crosshairs + slab thickness / MIP
 
 ## Cross-cutting (ongoing)
 - ✅ i18n (en/es) for the Web Component UI + in-toolbar language selector

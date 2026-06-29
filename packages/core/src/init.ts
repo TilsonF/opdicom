@@ -1,6 +1,8 @@
 import {
   init as coreInit,
+  cornerstoneStreamingImageVolumeLoader,
   utilities as csUtilities,
+  volumeLoader,
 } from "@cornerstonejs/core";
 import { BUILTIN_COLORMAPS } from "./colormaps.js";
 import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader";
@@ -60,6 +62,16 @@ export function ensureInitialized(): Promise<void> {
       addTool(CircleROITool);
       addTool(BidirectionalTool);
       addTool(CobbAngleTool);
+
+      // Volume support (MPR): register the streaming image-volume loader so a
+      // volume can be built from a stack of imageIds.
+      volumeLoader.registerUnknownVolumeLoader(
+        cornerstoneStreamingImageVolumeLoader as never,
+      );
+      volumeLoader.registerVolumeLoader(
+        "cornerstoneStreamingImageVolume",
+        cornerstoneStreamingImageVolumeLoader as never,
+      );
 
       // The default colormap registry is empty in v5; register our built-ins.
       for (const cmap of BUILTIN_COLORMAPS) {
