@@ -47,6 +47,8 @@ import {
   type OpDicomTool,
 } from "./tools.js";
 import { voiFromWindowLevel, windowLevelFromVoi } from "./voi.js";
+import { hasDicomMagic, isWebImageType } from "./web-image.js";
+import { imageFileToDicom } from "./web-image-loader.js";
 
 /** Result of sampling the image under a canvas point. */
 export interface ProbeResult {
@@ -237,7 +239,9 @@ export class OpDicomEngine {
    * the embedded frames. The first image is displayed.
    */
   async loadFiles(files: ArrayLike<Blob>): Promise<LoadResult> {
-    const blobs = Array.from(files);
+    const blobs = await Promise.all(
+      Array.from(files).map((b) => this.normalizeToDicom(b)),
+    );
     const imageIds: string[] = [];
     const metadata: DicomMetadata[] = [];
     const blobForImage: Blob[] = [];
@@ -269,6 +273,21 @@ export class OpDicomEngine {
     // Retain originals (aligned to imageIds) for "download DICOM".
     this.sourceBlobs = blobForImage;
     return { imageIds, metadata };
+  }
+
+  /**
+   * Pass DICOM through unchanged; wrap a plain web image (PNG/JPEG/…) into an
+   * RGB DICOM so it can render via the normal pipeline.
+   */
+  private async normalizeToDicom(blob: Blob): Promise<Blob> {
+    const head = new Uint8Array(await blob.slice(0, 132).arrayBuffer());
+    if (hasDicomMagic(head)) return blob;
+    const name = blob instanceof File ? blob.name : undefined;
+    if (isWebImageType(blob.type, name)) {
+      const dicom = await imageFileToDicom(blob);
+      return new Blob([dicom as BlobPart], { type: "application/dicom" });
+    }
+    return blob; // assume preamble-less DICOM; let the parser/loader try
   }
 
   /**

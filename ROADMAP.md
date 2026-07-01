@@ -51,8 +51,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ✅ **Multi-frame DICOM** — a multi-frame file (US/XA cine) expands into
   per-frame imageIds; cine/scroll play the embedded frames. Compressed transfer
   syntaxes decode via bundled WASM (JPEG/JPEG-LS/JPEG2000/RLE).
-- ⬜ **Plain web images (PNG/JPEG)** — optional loader to view non-DICOM images
-  (only DICOM `wadouri`/`wadors` are registered today).
+- ✅ **Plain web images (PNG/JPEG/…)** — non-DICOM images are wrapped into an
+  RGB DICOM in the browser and rendered via the normal pipeline (drag & drop or
+  file picker). Detects DICOM vs image automatically.
 
 ## v0.3.x — Viewer parity (dwv-inspired) 🚧
 - ✅ Corner metadata overlays (patient/study/series) + W/L + zoom + slice
