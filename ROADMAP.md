@@ -47,11 +47,10 @@ Legend: ✅ done · 🚧 in progress · ⬜ planned
 - ⬜ Segmentation overlays
 - ⬜ WebGPU rendering path
 
-## Input coverage — planned ⬜
-- ⬜ **Multi-frame DICOM** — expand a single multi-frame file (e.g. US/XA cine)
-  into per-frame imageIds so cine plays the embedded frames (today one imageId
-  per file → only frame 0 shows). Compressed transfer syntaxes already decode
-  (bundled WASM: JPEG/JPEG-LS/JPEG2000/RLE).
+## Input coverage 🚧
+- ✅ **Multi-frame DICOM** — a multi-frame file (US/XA cine) expands into
+  per-frame imageIds; cine/scroll play the embedded frames. Compressed transfer
+  syntaxes decode via bundled WASM (JPEG/JPEG-LS/JPEG2000/RLE).
 - ⬜ **Plain web images (PNG/JPEG)** — optional loader to view non-DICOM images
   (only DICOM `wadouri`/`wadors` are registered today).
 

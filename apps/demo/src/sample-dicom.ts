@@ -246,6 +246,75 @@ function makeVolumeSliceBytes(
   return concat([preamble, magic, groupLen, metaBody, dataBody]);
 }
 
+// ---- Multi-frame sample (single file, N frames — a cine loop) -------------
+
+/** A single multi-frame DICOM (moving disc) — like a US/XA cine loop. */
+export function makeMultiframeDicomFile(size = 160, frames = 24): File {
+  const framePixels = new Uint8Array(size * size * frames * 2);
+  const dv = new DataView(framePixels.buffer);
+  for (let f = 0; f < frames; f++) {
+    // Disc moving on a circular path, so playback clearly looks like motion.
+    const angle = (f / frames) * Math.PI * 2;
+    const cx = size / 2 + Math.cos(angle) * size * 0.28;
+    const cy = size / 2 + Math.sin(angle) * size * 0.28;
+    const base = f * size * size;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const d = Math.hypot(x - cx, y - cy);
+        const v = d < size * 0.12 ? 3600 : 500 + Math.round(200 * Math.sin(d / 6));
+        dv.setUint16((base + y * size + x) * 2, Math.max(0, Math.min(4095, v)), true);
+      }
+    }
+  }
+
+  const metaEls: El[] = [
+    { group: 0x0002, element: 0x0002, vr: "UI", value: "1.2.840.10008.5.1.4.1.1.7" },
+    { group: 0x0002, element: 0x0003, vr: "UI", value: "1.2.826.0.1.3680043.8.12.1" },
+    { group: 0x0002, element: 0x0010, vr: "UI", value: "1.2.840.10008.1.2.1" },
+  ];
+  const metaBody = concat(metaEls.map(element));
+  const groupLen = element({
+    group: 0x0002,
+    element: 0x0000,
+    vr: "UL",
+    value: (() => {
+      const b = new Uint8Array(4);
+      new DataView(b.buffer).setUint32(0, metaBody.length, true);
+      return b;
+    })(),
+  });
+
+  const dataEls: El[] = [
+    { group: 0x0008, element: 0x0016, vr: "UI", value: "1.2.840.10008.5.1.4.1.1.7" },
+    { group: 0x0008, element: 0x0018, vr: "UI", value: "1.2.826.0.1.3680043.8.12.2" },
+    { group: 0x0008, element: 0x0060, vr: "CS", value: "US" },
+    { group: 0x0008, element: 0x103e, vr: "LO", value: "OpDICOM Cine Loop" },
+    { group: 0x0010, element: 0x0010, vr: "PN", value: "SAMPLE^CINE" },
+    { group: 0x0020, element: 0x000d, vr: "UI", value: "1.2.826.0.1.3680043.8.12.3" },
+    { group: 0x0020, element: 0x000e, vr: "UI", value: "1.2.826.0.1.3680043.8.12.4" },
+    { group: 0x0028, element: 0x0008, vr: "IS", value: String(frames) },
+    { group: 0x0028, element: 0x0002, vr: "US", value: "1" },
+    { group: 0x0028, element: 0x0004, vr: "CS", value: "MONOCHROME2" },
+    { group: 0x0028, element: 0x0010, vr: "US", value: String(size) },
+    { group: 0x0028, element: 0x0011, vr: "US", value: String(size) },
+    { group: 0x0028, element: 0x0100, vr: "US", value: "16" },
+    { group: 0x0028, element: 0x0101, vr: "US", value: "16" },
+    { group: 0x0028, element: 0x0102, vr: "US", value: "15" },
+    { group: 0x0028, element: 0x0103, vr: "US", value: "0" },
+    { group: 0x0028, element: 0x1050, vr: "DS", value: "2048" },
+    { group: 0x0028, element: 0x1051, vr: "DS", value: "4096" },
+    { group: 0x7fe0, element: 0x0010, vr: "OW", value: framePixels },
+  ];
+  const dataBody = concat(dataEls.map(element));
+
+  const preamble = new Uint8Array(128);
+  const magic = new TextEncoder().encode("DICM");
+  const bytes = concat([preamble, magic, groupLen, metaBody, dataBody]);
+  return new File([bytes as BlobPart], "opdicom-cine.dcm", {
+    type: "application/dicom",
+  });
+}
+
 /** A multi-slice synthetic volume (3D ball phantom) for MPR demos. */
 export function makeVolumeSampleFiles(size = 128, slices = 48): File[] {
   const uids = {

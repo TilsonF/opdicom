@@ -232,23 +232,42 @@ export class OpDicomEngine {
 
   /**
    * Load DICOM files (browser File/Blob) into the viewport as a stack and
-   * return parsed metadata for each. The first image is displayed.
+   * return parsed metadata. A multi-frame file (NumberOfFrames > 1, e.g. an US
+   * or XA cine loop) is expanded into one imageId per frame so cine/scroll play
+   * the embedded frames. The first image is displayed.
    */
   async loadFiles(files: ArrayLike<Blob>): Promise<LoadResult> {
     const blobs = Array.from(files);
-    const imageIds = blobs.map((blob) => wadouri.fileManager.add(blob));
-    const metadata = await Promise.all(
-      blobs.map(async (blob) => {
-        try {
-          return await OpDicomParser.parseFile(blob).then((p) => p.metadata());
-        } catch {
-          return OpDicomParser.parse(new Uint8Array()).metadata();
+    const imageIds: string[] = [];
+    const metadata: DicomMetadata[] = [];
+    const blobForImage: Blob[] = [];
+
+    for (const blob of blobs) {
+      const base = wadouri.fileManager.add(blob);
+      let meta: DicomMetadata;
+      try {
+        meta = (await OpDicomParser.parseFile(blob)).metadata();
+      } catch {
+        meta = OpDicomParser.parse(new Uint8Array()).metadata();
+      }
+      const frames = meta.image.numberOfFrames ?? 1;
+      if (frames > 1) {
+        // wadouri frame index is 1-based (?frame=1..N).
+        for (let f = 1; f <= frames; f++) {
+          imageIds.push(`${base}?frame=${f}`);
+          metadata.push(meta);
+          blobForImage.push(blob);
         }
-      }),
-    );
+      } else {
+        imageIds.push(base);
+        metadata.push(meta);
+        blobForImage.push(blob);
+      }
+    }
+
     await this.loadImageIds(imageIds);
-    // Retain originals so the displayed instance can be downloaded as DICOM.
-    this.sourceBlobs = blobs;
+    // Retain originals (aligned to imageIds) for "download DICOM".
+    this.sourceBlobs = blobForImage;
     return { imageIds, metadata };
   }
 

@@ -94,6 +94,13 @@ test("splits into a 2x2 grid sharing one rendering engine", async ({ page }) => 
   await expect(page.locator("opdicom-viewer canvas")).toHaveCount(4);
 });
 
+test("expands a multi-frame DICOM into a playable cine", async ({ page }) => {
+  await page.getByRole("button", { name: "Load cine" }).click();
+  await expect(page.locator("opdicom-viewer canvas")).toBeVisible();
+  // The multi-frame file (24 frames) becomes a 24-image stack.
+  await expect(page.locator("opdicom-viewer .slice")).toContainText("/ 24");
+});
+
 test("renders MPR — three orthogonal planes from a volume", async ({ page }) => {
   await page.getByRole("button", { name: "Load 3D (MPR)" }).click();
   await expect(page.locator("opdicom-viewer canvas")).toHaveCount(3);
