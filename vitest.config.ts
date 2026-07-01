@@ -24,6 +24,7 @@ export default defineConfig({
         "packages/core/src/render-engine.ts",
         "packages/core/src/files.ts",
         "packages/core/src/colormap-names.ts",
+        "packages/core/src/web-image-loader.ts",
         "packages/viewer/src/opdicom-viewer.ts",
       ],
       thresholds: {

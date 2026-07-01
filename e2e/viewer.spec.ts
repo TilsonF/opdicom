@@ -106,6 +106,28 @@ test("renders MPR — three orthogonal planes from a volume", async ({ page }) =
   await expect(page.locator("opdicom-viewer canvas")).toHaveCount(3);
 });
 
+test("loads a plain PNG image (wrapped as DICOM)", async ({ page }) => {
+  const count = await page.evaluate(async () => {
+    const c = document.createElement("canvas");
+    c.width = 40;
+    c.height = 30;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 0, 40, 30);
+    ctx.fillStyle = "#e33";
+    ctx.fillRect(8, 6, 20, 16);
+    const blob: Blob = await new Promise((r) => c.toBlob((b) => r(b!), "image/png"));
+    const file = new File([blob], "test.png", { type: "image/png" });
+    const v = document.querySelector("opdicom-viewer") as HTMLElement & {
+      loadFiles(f: File[]): Promise<{ imageIds: string[] } | undefined>;
+    };
+    const res = await v.loadFiles([file]);
+    return res?.imageIds.length ?? 0;
+  });
+  expect(count).toBe(1);
+  await expect(page.locator("opdicom-viewer canvas")).toBeVisible();
+});
+
 test("activates a drawing tool", async ({ page }) => {
   await loadSyntheticDicom(page);
   const freehand = page.getByRole("button", { name: "Freehand" });

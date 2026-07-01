@@ -19,6 +19,8 @@ export { OpDicomMpr } from "./mpr.js";
 export type { OpDicomMprOptions } from "./mpr.js";
 export { filesToImageIds } from "./files.js";
 export { getColormapNames } from "./colormap-names.js";
+export { hasDicomMagic, isWebImageType, encodeRgbDicom } from "./web-image.js";
+export { imageFileToDicom } from "./web-image-loader.js";
 export {
   TOOLS,
   MANIPULATION_TOOLS,
